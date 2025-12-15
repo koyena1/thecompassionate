@@ -15,14 +15,13 @@ $sql_patient = "SELECT * FROM patients WHERE patient_id = '$patient_id'";
 $result_patient = $conn->query($sql_patient);
 $patient_data = $result_patient->fetch_assoc();
 
-// Use full name from DB
 $display_name = !empty($patient_data['full_name']) ? $patient_data['full_name'] : 'Patient';
-
-// --- FIX: FETCH PROFILE IMAGE ---
-// If profile_image is set in DB, use it. Otherwise use placeholder.
 $db_image = !empty($patient_data['profile_image']) ? $patient_data['profile_image'] : 'https://i.pravatar.cc/150?img=33';
-// Add timestamp to force refresh
 $display_img = $db_image . "?v=" . time();
+
+// --- NEW: Include Notification Logic ---
+// This will generate notifications if they don't exist and give us $unread_count
+include 'check_notifications.php'; 
 ?>
 
 <!DOCTYPE html>
@@ -148,6 +147,20 @@ $display_img = $db_image . "?v=" . time();
             color: var(--text-light);
             box-shadow: var(--shadow);
             cursor: pointer;
+            text-decoration: none; /* Added so link works */
+            position: relative; /* For red dot positioning */
+        }
+
+        /* --- NEW RED DOT STYLE --- */
+        .notify-badge {
+            position: absolute;
+            top: 0px;
+            right: 0px;
+            width: 12px;
+            height: 12px;
+            background-color: var(--primary-red);
+            border-radius: 50%;
+            border: 2px solid var(--white);
         }
 
         .profile-info {
@@ -326,7 +339,15 @@ $display_img = $db_image . "?v=" . time();
             </div>
 
             <div class="user-profile">
-                <div class="icon-btn"><i class="fa-regular fa-bell"></i></div>
+                <a href="notification.php" class="icon-btn">
+    <i class="fa-regular fa-bell"></i>
+    
+    <?php if(isset($unread_count) && $unread_count > 0): ?>
+        <span class="notify-badge"></span>
+    <?php endif; ?>
+    
+</a>
+
                 <div class="profile-info">
                     <div style="text-align: right;">
                         <h4 style="font-size: 14px;"><?php echo htmlspecialchars($display_name); ?></h4>
@@ -346,15 +367,33 @@ $display_img = $db_image . "?v=" . time();
 
         <section class="dashboard-grid">
             <div class="panel">
-                <div class="panel-header"><h3>Recent Notifications</h3><a href="#" class="view-all">View All</a></div>
+                <div class="panel-header"><h3>Recent Notifications</h3><a href="notification.php" class="view-all">View All</a></div>
                 <div id="request-list">
-                    <div class="request-item">
-                        <div class="patient-info">
-                            <img src="https://i.pravatar.cc/150?img=11" alt="">
-                            <div class="patient-text"><h4>Dr. Stephen</h4><p>Added new prescription</p></div>
+                    <?php 
+                        // Fetch latest 2 notifications for dashboard widget
+                        $dash_notif_sql = "SELECT * FROM notifications WHERE patient_id = '$patient_id' ORDER BY created_at DESC LIMIT 2";
+                        $dash_notif_res = $conn->query($dash_notif_sql);
+                        
+                        if($dash_notif_res->num_rows > 0) {
+                            while($d_row = $dash_notif_res->fetch_assoc()) {
+                                $d_time = date("h:i A", strtotime($d_row['created_at']));
+                    ?>
+                        <div class="request-item">
+                            <div class="patient-info">
+                                <img src="https://i.pravatar.cc/150?img=11" alt="">
+                                <div class="patient-text">
+                                    <h4><?php echo htmlspecialchars($d_row['title']); ?></h4>
+                                    <p><?php echo substr(htmlspecialchars($d_row['message']), 0, 30) . '...'; ?></p>
+                                </div>
+                            </div>
+                            <span style="font-size: 12px; color: var(--text-light);"><?php echo $d_time; ?></span>
                         </div>
-                        <span style="font-size: 12px; color: var(--text-light);">10:00 AM</span>
-                    </div>
+                    <?php 
+                            }
+                        } else {
+                            echo '<p style="font-size:12px; color:var(--text-light);">No recent notifications.</p>';
+                        }
+                    ?>
                 </div>
             </div>
 

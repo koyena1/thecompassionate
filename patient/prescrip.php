@@ -10,17 +10,14 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'patient') {
 
 $patient_id = $_SESSION['user_id']; 
 
-// --- FETCH PATIENT DETAILS (Photo & Name) ---
+// --- FETCH PATIENT DETAILS ---
 $sql_patient = "SELECT * FROM patients WHERE patient_id = '$patient_id'";
 $result_patient = $conn->query($sql_patient);
 $patient_data = $result_patient->fetch_assoc();
 
-// 1. Prepare Name
 $display_name = !empty($patient_data['full_name']) ? $patient_data['full_name'] : 'Patient';
-
-// 2. Prepare Image (Logic to use uploaded photo or fallback)
 $db_image = !empty($patient_data['profile_image']) ? $patient_data['profile_image'] : 'https://i.pravatar.cc/150?img=33';
-$display_img = $db_image . "?v=" . time(); // Add timestamp to force refresh
+$display_img = $db_image . "?v=" . time();
 ?>
 
 <!DOCTYPE html>
@@ -39,8 +36,6 @@ $display_img = $db_image . "?v=" . time(); // Add timestamp to force refresh
             --sidebar-width: 240px;
             --primary-purple: #7B61FF;
             --primary-red: #FF5C60;
-            --primary-orange: #FFB800;
-            --primary-blue: #1FB6FF;
             --text-dark: #2D3436;
             --text-light: #A0A4A8;
             --white: #FFFFFF;
@@ -112,71 +107,44 @@ $display_img = $db_image . "?v=" . time(); // Add timestamp to force refresh
             border: 1px solid transparent;
         }
 
-        .presc-card:hover {
-            transform: translateY(-5px);
-            border-color: #eee;
-        }
+        .presc-card:hover { transform: translateY(-5px); border-color: #eee; }
 
-        .presc-header {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
+        .presc-header { display: flex; align-items: center; gap: 15px; }
 
         .file-icon {
-            width: 50px;
-            height: 50px;
+            width: 50px; height: 50px;
             background: rgba(255, 92, 96, 0.1);
             color: var(--primary-red);
             border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: flex; align-items: center; justify-content: center;
             font-size: 24px;
         }
 
         .presc-info h4 { font-size: 16px; margin-bottom: 2px; }
         .presc-info p { font-size: 12px; color: var(--text-light); }
         
-        .presc-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 5px;
-        }
+        .presc-actions { display: flex; gap: 10px; margin-top: 5px; }
         
         .btn-download {
-            flex: 1;
-            background: var(--text-dark);
-            color: white;
-            border: none;
-            padding: 10px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 13px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 8px;
+            flex: 1; background: var(--text-dark); color: white;
+            border: none; padding: 10px; border-radius: 8px;
+            cursor: pointer; font-size: 13px; text-decoration: none;
+            display: flex; justify-content: center; align-items: center; gap: 8px;
             transition: 0.3s;
         }
         
         .btn-view {
-            width: 40px;
-            background: #f5f5f5;
-            color: var(--text-dark);
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            transition: 0.3s;
+            width: 40px; background: #f5f5f5; color: var(--text-dark);
+            border: none; border-radius: 8px; cursor: pointer;
+            display: flex; justify-content: center; align-items: center;
+            transition: 0.3s; text-decoration: none;
         }
 
         .btn-download:hover { background: #000; }
         .btn-view:hover { background: #e0e0e0; }
 
-        /* Responsive */
+        .no-data { grid-column: 1 / -1; text-align: center; color: var(--text-light); padding: 50px; }
+
         @media (max-width: 768px) {
             .sidebar { display: none; }
             .main-content { margin-left: 0; padding: 20px; }
@@ -208,61 +176,71 @@ $display_img = $db_image . "?v=" . time(); // Add timestamp to force refresh
 
         <div class="presc-grid">
             
+            <?php
+            // --- DYNAMICALLY FETCH PRESCRIPTIONS ---
+            $p_sql = "SELECT pr.*, a.appointment_date, ad.full_name as dr_name 
+                      FROM prescriptions pr 
+                      JOIN appointments a ON pr.appointment_id = a.appointment_id 
+                      JOIN admin_users ad ON a.admin_id = ad.admin_id 
+                      WHERE pr.patient_id = '$patient_id' 
+                      ORDER BY pr.created_at DESC";
+            $p_res = $conn->query($p_sql);
+
+            if ($p_res->num_rows > 0) {
+                while($row = $p_res->fetch_assoc()) {
+                    $date = date("d F Y", strtotime($row['appointment_date']));
+                    $doctor = htmlspecialchars($row['dr_name']);
+                    
+                    // Determine File Type & Links
+                    if ($row['prescription_type'] == 'Upload') {
+                        $icon = '<i class="fa-solid fa-file-pdf"></i>';
+                        $title = "Prescription File";
+                        $link = $row['file_url']; // Link to uploaded file
+                        $download_attr = "download";
+                    } else {
+                        // Digital (Text) Prescription
+                        $icon = '<i class="fa-solid fa-file-prescription"></i>';
+                        $title = "Digital Prescription";
+                        // Create a data URI to allow downloading text as a file
+                        $text_content = htmlspecialchars($row['digital_content']);
+                        $link = "data:text/plain;charset=utf-8," . rawurlencode($row['digital_content']);
+                        $download_attr = "download='prescription_".$date.".txt'";
+                    }
+            ?>
+            
             <div class="presc-card">
                 <div class="presc-header">
-                    <div class="file-icon"><i class="fa-solid fa-file-pdf"></i></div>
+                    <div class="file-icon"><?php echo $icon; ?></div>
                     <div class="presc-info">
-                        <h4>Viral Fever Treatment</h4>
-                        <p>Dr. Savannah • 10 April 2024</p>
+                        <h4><?php echo $title; ?></h4>
+                        <p>Dr. <?php echo $doctor; ?> • <?php echo $date; ?></p>
                     </div>
                 </div>
                 <div class="presc-actions">
-                    <button class="btn-download"><i class="fa-solid fa-download"></i> Download</button>
-                    <button class="btn-view"><i class="fa-regular fa-eye"></i></button>
+                    <?php if($row['prescription_type'] == 'Upload'): ?>
+                        <a href="<?php echo htmlspecialchars($link); ?>" class="btn-download" download>
+                            <i class="fa-solid fa-download"></i> Download
+                        </a>
+                        <a href="<?php echo htmlspecialchars($link); ?>" class="btn-view" target="_blank">
+                            <i class="fa-regular fa-eye"></i>
+                        </a>
+                    <?php else: ?>
+                         <a href="<?php echo $link; ?>" class="btn-download" <?php echo $download_attr; ?>>
+                            <i class="fa-solid fa-download"></i> Download
+                        </a>
+                        <button class="btn-view" onclick="alert('<?php echo str_replace(array("\r", "\n"), "\\n", addslashes($row['digital_content'])); ?>')">
+                            <i class="fa-regular fa-eye"></i>
+                        </button>
+                    <?php endif; ?>
                 </div>
             </div>
 
-            <div class="presc-card">
-                <div class="presc-header">
-                    <div class="file-icon"><i class="fa-solid fa-file-pdf"></i></div>
-                    <div class="presc-info">
-                        <h4>General Checkup Report</h4>
-                        <p>Dr. Stephen • 22 March 2024</p>
-                    </div>
-                </div>
-                <div class="presc-actions">
-                    <button class="btn-download"><i class="fa-solid fa-download"></i> Download</button>
-                    <button class="btn-view"><i class="fa-regular fa-eye"></i></button>
-                </div>
-            </div>
-
-            <div class="presc-card">
-                <div class="presc-header">
-                    <div class="file-icon"><i class="fa-solid fa-file-pdf"></i></div>
-                    <div class="presc-info">
-                        <h4>Heart Rate Monitoring</h4>
-                        <p>Dr. Frank • 15 Feb 2024</p>
-                    </div>
-                </div>
-                <div class="presc-actions">
-                    <button class="btn-download"><i class="fa-solid fa-download"></i> Download</button>
-                    <button class="btn-view"><i class="fa-regular fa-eye"></i></button>
-                </div>
-            </div>
-
-            <div class="presc-card">
-                <div class="presc-header">
-                    <div class="file-icon"><i class="fa-solid fa-file-pdf"></i></div>
-                    <div class="presc-info">
-                        <h4>Blood Test Results</h4>
-                        <p>Lab Assistant • 10 Feb 2024</p>
-                    </div>
-                </div>
-                <div class="presc-actions">
-                    <button class="btn-download"><i class="fa-solid fa-download"></i> Download</button>
-                    <button class="btn-view"><i class="fa-regular fa-eye"></i></button>
-                </div>
-            </div>
+            <?php 
+                }
+            } else {
+                echo '<div class="no-data"><i class="fa-solid fa-folder-open" style="font-size: 40px; margin-bottom: 10px;"></i><p>No prescriptions found yet.</p></div>';
+            }
+            ?>
 
         </div>
     </main>
