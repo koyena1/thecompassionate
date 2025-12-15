@@ -7,8 +7,7 @@ if(!isset($_GET['id'])){
 
 $appt_id = htmlspecialchars($_GET['id']);
 
-// Generate a Consistent Room Name
-// removing special characters to ensure it works on all devices
+// Generate a Consistent Room Name (Removes spaces/special chars)
 $room_name = "SafeSpace_Consultation_" . preg_replace("/[^a-zA-Z0-9]/", "", $appt_id);
 ?>
 <!DOCTYPE html>
@@ -39,14 +38,20 @@ $room_name = "SafeSpace_Consultation_" . preg_replace("/[^a-zA-Z0-9]/", "", $app
         /* Video Container */
         #meet { width: 100%; height: 100%; padding-top: 60px; box-sizing: border-box; background: #000; }
         
-        /* Admin Instruction Overlay */
-        #admin-hint {
-            position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.9); padding: 15px; border-radius: 8px;
-            text-align: center; z-index: 20; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            max-width: 90%;
+        /* Fallback / External Link Overlay */
+        #external-link-msg {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            text-align: center; z-index: 5; color: #aaa;
+            display: none; /* Shows if video fails or takes too long */
         }
-        .hide { display: none; }
+        
+        .btn-external {
+            display: inline-block; margin-top: 10px; padding: 12px 24px;
+            background-color: #0ea5e9; color: white; text-decoration: none;
+            border-radius: 8px; font-weight: bold; font-size: 16px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .btn-external:hover { background-color: #0284c7; }
     </style>
 </head>
 <body>
@@ -56,12 +61,12 @@ $room_name = "SafeSpace_Consultation_" . preg_replace("/[^a-zA-Z0-9]/", "", $app
         <a href="javascript:window.close()" class="btn-close">End Call</a>
     </div>
 
-    <div id="admin-hint">
-        <strong><i class="fa-solid fa-circle-info"></i> For the Doctor/Admin:</strong><br>
-        If you see "Waiting for moderator", click the blue <b>"Log-in"</b> button on screen.<br>
-        <small>Sign in with Google/GitHub to start the meeting for the patient.</small>
-        <br><br>
-        <button onclick="document.getElementById('admin-hint').classList.add('hide')" style="padding:5px 10px; cursor:pointer;">OK, I understand</button>
+    <div id="external-link-msg">
+        <h2><i class="fa-solid fa-video-slash"></i> Video not loading?</h2>
+        <p>If you see a "Waiting for moderator" screen or cannot log in:</p>
+        <a href="https://meet.jit.si/<?php echo $room_name; ?>" target="_blank" class="btn-external">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i> Open Meeting in New Tab
+        </a>
     </div>
 
     <div id="meet"></div>
@@ -69,6 +74,11 @@ $room_name = "SafeSpace_Consultation_" . preg_replace("/[^a-zA-Z0-9]/", "", $app
     <script src='https://meet.jit.si/external_api.js'></script>
     <script>
         window.onload = function() {
+            // Show fallback button after 3 seconds just in case
+            setTimeout(() => {
+                document.getElementById('external-link-msg').style.display = 'block';
+            }, 3000);
+
             const domain = 'meet.jit.si';
             const options = {
                 roomName: '<?php echo $room_name; ?>',
@@ -81,14 +91,7 @@ $room_name = "SafeSpace_Consultation_" . preg_replace("/[^a-zA-Z0-9]/", "", $app
                     prejoinPageEnabled: false 
                 },
                 interfaceConfigOverwrite: { 
-                    SHOW_JITSI_WATERMARK: false,
-                    TOOLBAR_BUTTONS: [
-                        'microphone', 'camera', 'closedcaptions', 'desktop', 'fullscreen',
-                        'fodeviceselection', 'hangup', 'profile', 'chat', 'recording',
-                        'livestreaming', 'etherpad', 'sharedvideo', 'settings', 'raisehand',
-                        'videoquality', 'filmstrip', 'feedback', 'stats', 'shortcuts',
-                        'tileview', 'videobackgroundblur', 'download', 'help', 'mute-everyone'
-                    ]
+                    SHOW_JITSI_WATERMARK: false 
                 },
                 userInfo: {
                     displayName: "Participant" 
@@ -96,12 +99,11 @@ $room_name = "SafeSpace_Consultation_" . preg_replace("/[^a-zA-Z0-9]/", "", $app
             };
             const api = new JitsiMeetExternalAPI(domain, options);
             
-            // Auto-hide the hint when user joins
+            // Hide fallback if join is successful
             api.addEventListener('videoConferenceJoined', () => {
-                document.getElementById('admin-hint').classList.add('hide');
+                document.getElementById('external-link-msg').style.display = 'none';
             });
             
-            // Close window on hangup
             api.addEventListener('videoConferenceLeft', () => {
                 window.close();
             });
