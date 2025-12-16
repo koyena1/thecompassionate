@@ -92,7 +92,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <body>
             <button onclick='window.print()' class='btn-print'>Download / Print PDF</button>
             <div class='header'>
-                <div class='logo'>Safe Space <i class='fa-solid fa-heart-pulse'></i></div>
+                <div class='logo'>The CompassionateSpace <i class='fa-solid fa-heart-pulse'></i></div>
                 <div style='text-align: right;'>
                     <strong>Prescription</strong><br>
                     Date: " . date("d M Y") . "<br>
@@ -124,7 +124,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
             <div class='footer'>
                 <p>This is a computer-generated document. No signature is required.</p>
-                <p>Safe Space Clinic • contact@safespace.com</p>
+                <p>The CompassionateSpace Clinic • contact@thecompassionatespace49.com</p>
             </div>
         </body>
         </html>";
@@ -148,8 +148,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             
             // 2. Email Logic (Standard PHP Mail)
             $to = $data['email'];
-            $subject = "Your Prescription - Safe Space";
-            $msg = "Dear " . $data['full_name'] . ",\n\nYour prescription has been updated. Please log in to your portal to view it.\n\nRegard,\nSafe Space";
+            $subject = "Your Prescription - The CompassionateSpace";
+            $msg = "Dear " . $data['full_name'] . ",\n\nYour prescription has been updated. Please log in to your portal to view it.\n\nRegard,\nThe CompassionateSpace";
             // mail($to, $subject, $msg); // Uncomment to enable email if server supports it
 
             // Refresh Data to show updated address/condition

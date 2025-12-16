@@ -1,0 +1,57 @@
+
+        <html>
+        <head>
+            <style>
+                body { font-family: 'Helvetica', sans-serif; padding: 40px; color: #333; max-width: 800px; margin: auto; border: 1px solid #ddd; }
+                .header { border-bottom: 2px solid #7B61FF; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; }
+                .logo { color: #7B61FF; font-size: 24px; font-weight: bold; }
+                .meta-box { background: #f9f9f9; padding: 20px; border-radius: 10px; display: flex; justify-content: space-between; margin-bottom: 30px; }
+                .meta-col strong { display: block; font-size: 12px; color: #888; margin-bottom: 5px; }
+                .meta-col span { font-size: 16px; font-weight: 600; }
+                .rx-section { min-height: 300px; }
+                .rx-header { font-size: 18px; font-weight: bold; color: #7B61FF; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+                .rx-body { white-space: pre-line; line-height: 1.6; }
+                .footer { margin-top: 50px; text-align: center; font-size: 12px; color: #aaa; border-top: 1px solid #eee; padding-top: 20px; }
+                .btn-print { background: #7B61FF; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; margin-bottom: 20px; }
+                @media print { .btn-print { display: none; } body { border: none; } }
+            </style>
+        </head>
+        <body>
+            <button onclick='window.print()' class='btn-print'>Download / Print PDF</button>
+            <div class='header'>
+                <div class='logo'>Safe Space <i class='fa-solid fa-heart-pulse'></i></div>
+                <div style='text-align: right;'>
+                    <strong>Prescription</strong><br>
+                    Date: 16 Dec 2025<br>
+                    ID: #RX-11
+                </div>
+            </div>
+            
+            <div class='meta-box'>
+                <div class='meta-col'>
+                    <strong>PATIENT</strong>
+                    <span>koyena</span><br>
+                    <small>Tamluk</small>
+                </div>
+                <div class='meta-col'>
+                    <strong>DETAILS</strong>
+                    <span>Age: 22 | O+</span><br>
+                    <small>Condition: Stable</small>
+                </div>
+                <div class='meta-col'>
+                    <strong>DOCTOR</strong>
+                    <span>Dr. Consultant</span>
+                </div>
+            </div>
+
+            <div class='rx-section'>
+                <div class='rx-header'>Rx / Clinical Notes</div>
+                <div class='rx-body'>hbHJBHJSHBSHJBSB NZ S X NSBSNNBSBSN</div>
+            </div>
+
+            <div class='footer'>
+                <p>This is a computer-generated document. No signature is required.</p>
+                <p>Safe Space Clinic • contact@safespace.com</p>
+            </div>
+        </body>
+        </html>

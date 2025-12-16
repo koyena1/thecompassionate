@@ -4,7 +4,7 @@ session_start();
 
 // --- CHECK LOGIN ---
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'patient') {
-    header("Location: ../login.php");
+    header("Location: ../myapp.php");
     exit();
 }
 
@@ -18,7 +18,7 @@ $patient_data = $result_patient->fetch_assoc();
 // 1. Prepare Name
 $display_name = !empty($patient_data['full_name']) ? $patient_data['full_name'] : 'Patient';
 
-// 2. Prepare Image (Logic to use uploaded photo or fallback)
+// 2. Prepare Patient Image (Top Right Header)
 $db_image = !empty($patient_data['profile_image']) ? $patient_data['profile_image'] : 'https://i.pravatar.cc/150?img=33';
 $display_img = $db_image . "?v=" . time(); // Add timestamp to force refresh
 ?>
@@ -164,7 +164,6 @@ $display_img = $db_image . "?v=" . time(); // Add timestamp to force refresh
             <div class="appointments-list">
                 <?php
                     // Fetch ALL appointments for the logged-in patient
-                    // Joining with admin_users table to get Doctor's name if assigned
                     $sql_all = "SELECT a.*, d.full_name as doctor_name, d.specialization 
                                 FROM appointments a 
                                 LEFT JOIN admin_users d ON a.admin_id = d.admin_id
@@ -190,14 +189,25 @@ $display_img = $db_image . "?v=" . time(); // Add timestamp to force refresh
                                     $btn_html = '<span style="font-size:12px; color:#aaa;">No actions</span>';
                                 }
 
-                                // Doctor Name fallback
+                                // Doctor Name Handling
                                 $doctorName = !empty($row['doctor_name']) ? htmlspecialchars($row['doctor_name']) : 'Doctor Assigned Soon';
                                 $specialization = !empty($row['specialization']) ? htmlspecialchars($row['specialization']) : 'General';
+                                
+                                // --- UPDATE: Logic to replace Super Admin and Swap Image ---
+                                // Default Doctor Image (Male)
+                                $doctorImg = "https://i.pravatar.cc/150?img=59";
+
+                                if($doctorName === 'Super Admin') {
+                                    $doctorName = 'Dr. Usri Sengupta';
+                                    // Change to Female Doctor Image
+                                    $doctorImg = "https://i.pravatar.cc/150?img=5"; 
+                                }
+                                // --------------------------------------------------------
 
                                 echo '
                                 <div class="appt-card">
                                     <div class="appt-details">
-                                        <img src="https://i.pravatar.cc/150?img=59" alt="Doctor" class="doctor-img">
+                                        <img src="'.$doctorImg.'" alt="Doctor" class="doctor-img">
                                         <div class="appt-info">
                                             <h4>'.$doctorName.'</h4>
                                             <span>'.$specialization.'</span>

@@ -38,7 +38,6 @@
         <div class="row">
             <div class="col-md-6 d-flex align-items-center">
                 <p class="mb-0 phone pl-md-2">
-                    <a href="#" class="mr-2"><span class="fa fa-phone mr-1"></span> +91 9065744871</a> 
                     <a href="#"><span class="fa fa-paper-plane mr-1"></span> thecompassionatespace49@gmail.com</a>
                 </p>
             </div>
@@ -69,10 +68,9 @@
         <div class="collapse navbar-collapse" id="ftco-nav">
             <ul class="navbar-nav ml-auto align-items-center">
                 <li class="nav-item active"><a href="index.php" class="nav-link">Home</a></li>
+                <li class="nav-item"><a href="blog.php" class="nav-link">MindCare</a></li>
                 <li class="nav-item"><a href="about.php" class="nav-link">About</a></li>
                 <li class="nav-item"><a href="services.php" class="nav-link">Services</a></li>
-                <li class="nav-item"><a href="pricing.php" class="nav-link">Pricing</a></li>
-                <li class="nav-item"><a href="blog.php" class="nav-link">Blog</a></li>
                 <li class="nav-item"><a href="contact.php" class="nav-link">Contact</a></li>
 
                 <?php 

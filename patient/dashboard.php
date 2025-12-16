@@ -4,7 +4,7 @@ include '../config/db.php';
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'patient') {
-    header("Location: ../login.php");
+    header("Location: ../dashboard.php");
     exit();
 }
 

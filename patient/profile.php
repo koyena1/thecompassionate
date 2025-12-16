@@ -2,8 +2,9 @@
 session_start();
 include '../config/db.php'; 
 
+// Check if user is logged in as patient
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'patient') {
-    header("Location: ../login.php");
+    header("Location: ../profile.php");
     exit();
 }
 
@@ -11,20 +12,29 @@ $patient_id = $_SESSION['user_id'];
 $success_msg = "";
 $error_msg = "";
 
-// HANDLE UPLOAD
+// --- HANDLE FORM SUBMISSION (UPDATE) ---
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $full_name = $conn->real_escape_string($_POST['full_name']);
-    $phone = $conn->real_escape_string($_POST['phone']);
-    $email = $conn->real_escape_string($_POST['email']);
-    $address = $conn->real_escape_string($_POST['address']);
-    $blood_type = $conn->real_escape_string($_POST['blood_type']);
-    $height = $conn->real_escape_string($_POST['height']);
-    $weight = $conn->real_escape_string($_POST['weight']);
-    $allergies = $conn->real_escape_string($_POST['allergies']);
-    $pref_email = isset($_POST['pref_email']) ? 1 : 0;
-    $pref_sms = isset($_POST['pref_sms']) ? 1 : 0;
-    $pref_dark = isset($_POST['pref_dark']) ? 1 : 0;
+    // 1. Get data safely using '??' to prevent "Undefined array key" errors
+    $full_name  = $conn->real_escape_string($_POST['full_name'] ?? '');
+    
+    // 2. Handle Age Logic: If empty, set to NULL for SQL, otherwise use the number
+    $raw_age    = $_POST['age'] ?? '';
+    $age_sql    = ($raw_age === '') ? "NULL" : "'" . $conn->real_escape_string($raw_age) . "'";
 
+    $phone      = $conn->real_escape_string($_POST['phone'] ?? '');
+    $email      = $conn->real_escape_string($_POST['email'] ?? '');
+    $address    = $conn->real_escape_string($_POST['address'] ?? '');
+    $blood_type = $conn->real_escape_string($_POST['blood_type'] ?? '');
+    $height     = $conn->real_escape_string($_POST['height'] ?? '');
+    $weight     = $conn->real_escape_string($_POST['weight'] ?? '');
+    $allergies  = $conn->real_escape_string($_POST['allergies'] ?? '');
+
+    // Checkboxes (return 1 if checked, 0 if not)
+    $pref_email = isset($_POST['pref_email']) ? 1 : 0;
+    $pref_sms   = isset($_POST['pref_sms']) ? 1 : 0;
+    $pref_dark  = isset($_POST['pref_dark']) ? 1 : 0;
+
+    // 3. Handle Image Upload
     $image_update_sql = "";
     if (isset($_FILES['profile_photo']) && $_FILES['profile_photo']['error'] == 0) {
         $target_dir = "uploads/";
@@ -46,29 +56,47 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 
+    // 4. Update Database
     if (empty($error_msg)) {
-        $sql_update = "UPDATE patients SET full_name='$full_name', phone_number='$phone', email='$email', address='$address', blood_type='$blood_type', height='$height', weight='$weight', allergies='$allergies', pref_email_notif='$pref_email', pref_sms_notif='$pref_sms', pref_dark_mode='$pref_dark' $image_update_sql WHERE patient_id='$patient_id'";
+        // Use $age_sql directly (it already contains quotes or NULL)
+        $sql_update = "UPDATE patients SET 
+            full_name='$full_name', 
+            age=$age_sql, 
+            phone_number='$phone', 
+            email='$email', 
+            address='$address', 
+            blood_type='$blood_type', 
+            height='$height', 
+            weight='$weight', 
+            allergies='$allergies', 
+            pref_email_notif='$pref_email', 
+            pref_sms_notif='$pref_sms', 
+            pref_dark_mode='$pref_dark' 
+            $image_update_sql 
+            WHERE patient_id='$patient_id'";
         
         if ($conn->query($sql_update) === TRUE) {
             $success_msg = "Profile updated!";
-            $_SESSION['full_name'] = $full_name;
+            $_SESSION['full_name'] = $full_name; // Update session name immediately
         } else {
             $error_msg = "Database Error: " . $conn->error;
         }
     }
 }
 
-// FETCH DATA
+// --- FETCH PATIENT DATA ---
 $sql_patient = "SELECT * FROM patients WHERE patient_id = '$patient_id'";
 $result_patient = $conn->query($sql_patient);
 $patient_data = $result_patient->fetch_assoc();
 
+// Prepare display variables (use defaults if null)
 $display_name = $patient_data['full_name'] ?? 'Patient';
+$display_age  = $patient_data['age'] ?? ''; 
 $display_email = $patient_data['email'] ?? '';
 $display_phone = $patient_data['phone_number'] ?? '';
 $display_address = $patient_data['address'] ?? '';
 
-// FIX: Use fallback image if empty, and ADD TIMESTAMP for cache busting
+// Fallback image + Timestamp for cache busting
 $db_image = !empty($patient_data['profile_image']) ? $patient_data['profile_image'] : 'https://i.pravatar.cc/150?img=33';
 $display_img = $db_image . "?v=" . time();
 
@@ -76,9 +104,11 @@ $blood = $patient_data['blood_type'] ?? 'O+';
 $ht = $patient_data['height'] ?? '0';
 $wt = $patient_data['weight'] ?? '0';
 $alrg = $patient_data['allergies'] ?? 'None';
+
+// Checkbox states
 $p_email = ($patient_data['pref_email_notif'] == 1) ? 'checked' : '';
-$p_sms = ($patient_data['pref_sms_notif'] == 1) ? 'checked' : '';
-$p_dark = ($patient_data['pref_dark_mode'] == 1) ? 'checked' : '';
+$p_sms   = ($patient_data['pref_sms_notif'] == 1) ? 'checked' : '';
+$p_dark  = ($patient_data['pref_dark_mode'] == 1) ? 'checked' : '';
 $dark_class = ($patient_data['pref_dark_mode'] == 1) ? 'dark-mode' : '';
 ?>
 
@@ -106,7 +136,8 @@ $dark_class = ($patient_data['pref_dark_mode'] == 1) ? 'dark-mode' : '';
         .profile-img-lg { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 3px solid var(--primary-blue); }
         .upload-icon { position: absolute; bottom: 0; right: 0; background: var(--primary-blue); color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 2px solid var(--white); }
         
-        .medical-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }
+        .medical-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px; margin-bottom: 30px; }
+        
         .medical-card { background: var(--white); padding: 20px; border-radius: 15px; text-align: center; box-shadow: var(--shadow); }
         .med-input { width: 100%; border: none; background: transparent; font-size: 18px; font-weight: 600; color: var(--text-dark); text-align: center; outline: none; border-bottom: 1px dashed var(--text-light); }
         
@@ -131,6 +162,7 @@ $dark_class = ($patient_data['pref_dark_mode'] == 1) ? 'dark-mode' : '';
         .success { background: rgba(0, 182, 155, 0.1); color: #00B69B; }
         .error { background: rgba(255, 92, 96, 0.1); color: #FF5C60; }
 
+        @media (max-width: 992px) { .medical-grid { grid-template-columns: repeat(3, 1fr); } }
         @media (max-width: 768px) { .settings-grid, .form-grid, .medical-grid { grid-template-columns: 1fr; } .main-content { margin-left: 0; padding: 20px; } }
     </style>
 </head>
@@ -167,6 +199,7 @@ $dark_class = ($patient_data['pref_dark_mode'] == 1) ? 'dark-mode' : '';
 
             <h3 style="margin-bottom: 15px; font-size: 18px;">Medical Profile (Editable)</h3>
             <div class="medical-grid">
+                <div class="medical-card"><h4>Age (Yrs)</h4><input type="number" name="age" class="med-input" value="<?php echo htmlspecialchars($display_age); ?>"></div>
                 <div class="medical-card"><h4>Blood Type</h4><input type="text" name="blood_type" class="med-input" value="<?php echo htmlspecialchars($blood); ?>" style="color: #FF5C60;"></div>
                 <div class="medical-card"><h4>Height (cm)</h4><input type="text" name="height" class="med-input" value="<?php echo htmlspecialchars($ht); ?>"></div>
                 <div class="medical-card"><h4>Weight (kg)</h4><input type="text" name="weight" class="med-input" value="<?php echo htmlspecialchars($wt); ?>"></div>

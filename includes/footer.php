@@ -48,8 +48,6 @@
               <h2 class="ftco-heading-2">Have a Questions?</h2>
               <div class="block-23 mb-3">
                 <ul>
-                  <li><span class="icon fa fa-map marker"></span><span class="text">203 Fake St. Mountain View, San Francisco, California, USA</span></li>
-                  <li><a href="#"><span class="icon fa fa-phone"></span><span class="text">+91 9065744871</span></a></li>
                   <li><a href="#"><span class="icon fa fa-paper-plane pr-4"></span><span class="text" style="word-break: break-all;">thecompassionatespace49@gmail.com</span></a></li>
                 </ul>
               </div>
