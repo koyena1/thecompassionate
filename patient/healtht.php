@@ -1,26 +1,28 @@
 <?php 
+// FILE: patient/healtht.php
 include '../config/db.php'; 
 session_start();
 
 // --- CHECK LOGIN ---
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'patient') {
-    header("Location: ../login.php");
-    exit();
+    // header("Location: ../login.php");
+    // exit();
 }
 
-$patient_id = $_SESSION['user_id']; 
+$patient_id = $_SESSION['user_id']; // Logged in patient
 
-// --- FETCH PATIENT DETAILS (Photo & Name) ---
+// --- FETCH PATIENT DETAILS ---
 $sql_patient = "SELECT * FROM patients WHERE patient_id = '$patient_id'";
 $result_patient = $conn->query($sql_patient);
 $patient_data = $result_patient->fetch_assoc();
 
-// 1. Prepare Name
 $display_name = !empty($patient_data['full_name']) ? $patient_data['full_name'] : 'Patient';
+$display_img = !empty($patient_data['profile_image']) ? $patient_data['profile_image'] : 'https://i.pravatar.cc/150?img=33';
 
-// 2. Prepare Image (Logic to use uploaded photo or fallback)
-$db_image = !empty($patient_data['profile_image']) ? $patient_data['profile_image'] : 'https://i.pravatar.cc/150?img=33';
-$display_img = $db_image . "?v=" . time(); // Add timestamp to force refresh
+// --- FETCH TIMELINE UPDATES (From medical_records) ---
+// This pulls the data Admin added in Step 2
+$timeline_sql = "SELECT * FROM medical_records WHERE patient_id = '$patient_id' ORDER BY created_at DESC";
+$timeline_res = $conn->query($timeline_sql);
 ?>
 
 <!DOCTYPE html>
@@ -33,7 +35,7 @@ $display_img = $db_image . "?v=" . time(); // Add timestamp to force refresh
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        /* --- CONSISTENT DASHBOARD STYLES --- */
+        /* KEEPING YOUR ORIGINAL STYLES */
         :root {
             --bg-color: #F5F6FA;
             --sidebar-width: 240px;
@@ -91,14 +93,14 @@ $display_img = $db_image . "?v=" . time(); // Add timestamp to force refresh
         .profile-info { display: flex; align-items: center; gap: 10px; }
         .profile-info img { width: 45px; height: 45px; border-radius: 12px; object-fit: cover; }
 
-        /* --- TIMELINE SPECIFIC STYLES --- */
+        /* --- TIMELINE STYLES --- */
         .timeline-wrapper {
             position: relative;
             padding-left: 20px;
             border-left: 2px solid #eee;
             margin-left: 10px;
             margin-top: 10px;
-            max-width: 800px; /* Constrain width for readability */
+            max-width: 800px;
         }
 
         .timeline-item { position: relative; margin-bottom: 40px; }
@@ -110,7 +112,7 @@ $display_img = $db_image . "?v=" . time(); // Add timestamp to force refresh
             border: 3px solid var(--primary-purple);
             border-radius: 50%;
             position: absolute;
-            left: -29px; /* Adjust to sit on the line */
+            left: -29px;
             top: 0; z-index: 2;
         }
         
@@ -138,7 +140,6 @@ $display_img = $db_image . "?v=" . time(); // Add timestamp to force refresh
         
         .doctor-ref img { width: 25px; height: 25px; border-radius: 50%; }
 
-        /* Responsive */
         @media (max-width: 768px) {
             .sidebar { display: none; }
             .main-content { margin-left: 0; padding: 20px; }
@@ -169,53 +170,51 @@ $display_img = $db_image . "?v=" . time(); // Add timestamp to force refresh
 
         <div class="timeline-wrapper">
             
-            <div class="timeline-item">
-                <div class="timeline-dot"></div>
-                <div class="timeline-date">April 10, 2024</div>
-                <div class="timeline-content">
-                    <h4>Viral Fever Diagnosis <span>Checked</span></h4>
-                    <p>Diagnosed with high fever. Prescribed antibiotics and rest for 3 days. Follow up required if temperature rises above 101°F.</p>
-                    <div class="doctor-ref">
-                        <img src="https://i.pravatar.cc/150?img=5" alt="Doctor">
-                        <span>Dr. Savannah Nguyen (Dermatology)</span>
+            <?php 
+            if ($timeline_res->num_rows > 0): 
+                $count = 0;
+                while($row = $timeline_res->fetch_assoc()): 
+                    // Make the top item look "active" (purple dot), others grey
+                    $dotClass = ($count === 0) ? '' : 'old';
+                    $dateStr = date('F d, Y', strtotime($row['created_at']));
+                    
+                    // Use 'diagnosis' column as Title
+                    $title = !empty($row['diagnosis']) ? htmlspecialchars($row['diagnosis']) : 'Doctor Update';
+                    // Use 'internal_doctor_notes' column as the main text
+                    $desc = !empty($row['internal_doctor_notes']) ? htmlspecialchars($row['internal_doctor_notes']) : 'No details provided.';
+            ?>
+            
+                <div class="timeline-item">
+                    <div class="timeline-dot <?php echo $dotClass; ?>"></div>
+                    <div class="timeline-date"><?php echo $dateStr; ?></div>
+                    <div class="timeline-content">
+                        <h4>
+                            <?php echo $title; ?> 
+                            <span><?php echo ($count === 0) ? 'Latest' : 'History'; ?></span>
+                        </h4>
+                        <p><?php echo $desc; ?></p>
+                        
+                        <div class="doctor-ref">
+                            <img src="https://ui-avatars.com/api/?name=Dr+Admin&background=random" alt="Doctor">
+                            <span>Doctor/Admin Team</span>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="timeline-item">
-                <div class="timeline-dot old"></div>
-                <div class="timeline-date">March 22, 2024</div>
-                <div class="timeline-content">
-                    <h4>Annual General Checkup <span>Routine</span></h4>
-                    <p>Overall health stats are good. Blood pressure is normal (120/80). Recommended to increase daily water intake.</p>
-                    <div class="doctor-ref">
-                        <img src="https://i.pravatar.cc/150?img=11" alt="Doctor">
-                        <span>Dr. Stephen Conley (General)</span>
+            <?php 
+                $count++;
+                endwhile; 
+            else: 
+            ?>
+                <div class="timeline-item">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-date"><?php echo date('M d, Y'); ?></div>
+                    <div class="timeline-content">
+                        <h4>Welcome to your Timeline</h4>
+                        <p>No health updates have been added by your doctor yet.</p>
                     </div>
                 </div>
-            </div>
-
-            <div class="timeline-item">
-                <div class="timeline-dot old"></div>
-                <div class="timeline-date">Feb 15, 2024</div>
-                <div class="timeline-content">
-                    <h4>Heart Rate Monitoring <span>Test</span></h4>
-                    <p>ECG report generated. Heart rate showed slight fluctuation due to stress. Advised meditation and sleep tracking.</p>
-                    <div class="doctor-ref">
-                        <img src="https://i.pravatar.cc/150?img=59" alt="Doctor">
-                        <span>Dr. Frank Marley (Cardiology)</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="timeline-item">
-                <div class="timeline-dot old"></div>
-                <div class="timeline-date">Jan 05, 2024</div>
-                <div class="timeline-content">
-                    <h4>Initial Registration <span>Admin</span></h4>
-                    <p>Patient profile created in MedEx system. Medical history form submitted and insurance details verified.</p>
-                </div>
-            </div>
+            <?php endif; ?>
 
         </div>
     </main>

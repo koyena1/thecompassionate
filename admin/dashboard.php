@@ -42,8 +42,7 @@ if (isset($_GET['fetch_notifications'])) {
         $unreadCount = $row['unread_count'];
     }
 
-    // B. Get Top 5 Recent Appointments (Regardless of read status, so list isn't empty)
-    // Added 'initial_health_issue' to fetch the reason
+    // B. Get Top 5 Recent Appointments
     $sql = "SELECT 
                 a.appointment_id, 
                 a.appointment_date, 
@@ -75,20 +74,49 @@ if (isset($_GET['fetch_notifications'])) {
     echo json_encode(['unread_count' => $unreadCount, 'notifications' => $items]);
     exit; 
 }
-// =======================================================================
-
 
 // --- SECURITY CHECK ---
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-    // header("Location: ../login.php"); 
-    // exit(); 
+    // Authentication logic here
 }
-// ----------------------
+
+// =======================================================================
+// 3. MAIN PAGE DATA FETCHING
+// =======================================================================
+include '../config/db.php';
+$conn_main = new mysqli($servername, $username, $password, $dbname);
+
+$real_patient_count = 0;
+$todays_appointments_count = 0;
+$total_visitors_count = 0; // New count for visitor tracking
+
+if (!$conn_main->connect_error) {
+    // 3.1 Count Total Patients
+    $countSql = "SELECT COUNT(DISTINCT patient_id) as total_patients FROM appointments";
+    $result = $conn_main->query($countSql);
+    if ($result && $row = $result->fetch_assoc()) {
+        $real_patient_count = $row['total_patients'];
+    }
+
+    // 3.2 Count Today's Appointments
+    $today_date = date('Y-m-d');
+    $apptSql = "SELECT COUNT(*) as today_count FROM appointments WHERE appointment_date = '$today_date' AND status != 'Cancelled'";
+    $apptResult = $conn_main->query($apptSql);
+    if ($apptResult && $apptRow = $apptResult->fetch_assoc()) {
+        $todays_appointments_count = $apptRow['today_count'];
+    }
+
+    // 3.3 Count Real Site Visitors
+    $visitorSql = "SELECT COUNT(*) as visitor_count FROM site_visitors";
+    $visitorResult = $conn_main->query($visitorSql);
+    if ($visitorResult && $visRow = $visitorResult->fetch_assoc()) {
+        $total_visitors_count = $visRow['visitor_count'];
+    }
+}
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -134,9 +162,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
         #sidebar::-webkit-scrollbar-thumb { background: #888; border-radius: 5px; }
         #sidebar::-webkit-scrollbar-thumb:hover { background: #555; }
 
-        /* Desktop Default */
         #sidebar { margin-left: 0; }
-        /* Desktop Toggled (Hidden) */
         #sidebar.active { margin-left: calc(var(--sidebar-width) * -1); }
 
         #sidebar .sidebar-header { padding: 20px; background: #fff; }
@@ -186,7 +212,6 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
             margin-left: var(--sidebar-width); 
         }
 
-        /* Desktop: Expand Content when sidebar is hidden */
         #content.active { margin-left: 0; width: 100%; }
 
         /* --- NAVBAR STYLES --- */
@@ -198,7 +223,6 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
             margin-bottom: 20px;
             box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
         }
-        .navbar-btn { box-shadow: none; outline: none !important; border: none; }
 
         /* --- CARD & CHART STYLES --- */
         .card { border: none; border-radius: 10px; box-shadow: 0 0 15px rgba(0, 0, 0, 0.05); transition: all 0.3s; }
@@ -218,13 +242,6 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
         .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         .chart-title { font-weight: 600; }
         .chart-percentage { font-size: 0.9em; }
-        .text-success { color: #2ecc71 !important; }
-        .text-danger { color: #e74c3c !important; }
-
-        .vitals-icon { font-size: 1.5em; color: var(--accent-color); margin-right: 10px; }
-        .chart-legend { display: flex; justify-content: center; margin-top: 15px; flex-wrap: wrap; }
-        .legend-item { display: flex; align-items: center; margin: 0 10px; font-size: 0.9em; }
-        .legend-color { width: 12px; height: 12px; border-radius: 50%; margin-right: 5px; }
 
         /* --- NOTIFICATION STYLES --- */
         .notification-dropdown { min-width: 340px; padding: 0; border: none; border-radius: 10px; overflow: hidden; }
@@ -241,19 +258,15 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
             100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
         }
 
-        /* --- MOBILE RESPONSIVENESS --- */
         @media (max-width: 991px) {
             #sidebar { margin-left: calc(var(--sidebar-width) * -1); }
             #sidebar.active { margin-left: 0; }
             #content { margin-left: 0; width: 100%; }
-            #content.active { margin-left: 0; }
-            .navbar form { display: none !important; }
         }
     </style>
 </head>
 
 <body>
-
     <div class="d-flex">
         <nav id="sidebar">
             <div class="sidebar-header d-flex justify-content-between align-items-center">
@@ -265,7 +278,6 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 
             <ul class="list-unstyled components">
                 <p class="ms-3">Emergency help</p>
-                
                 <li>
                     <a href="#dashboardSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="dropdown-toggle active">
                         <i class="fas fa-desktop"></i> Dashboard
@@ -290,7 +302,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
                         <i class="fas fa-user-injured"></i> Patients
                     </a>
                     <ul class="collapse list-unstyled" id="patientsSubmenu">
-                        <li><a href="#">Patient information overview</a></li>
+                        <li><a href="patient list.php">Patient information overview</a></li>
                         <li><a href="#">Clinical updates & documentation</a></li>
                     </ul>
                 </li>
@@ -312,7 +324,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
                     </ul>
                 </li>
                 <li>
-                    <a href="#formsSubmenu" data-bs-toggle="collapse" aria-expanded="false" >
+                    <a href="#formsSubmenu" data-bs-toggle="collapse" aria-expanded="false">
                         <i class="fas fa-file-alt"></i> Online Consult
                     </a>
                 </li>
@@ -329,7 +341,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
                         <i class="fas fa-lock"></i> Health Record
                     </a>
                     <ul class="collapse list-unstyled" id="authSubmenu">
-                        <li><a href="#">Timeline View</a></li>
+                        <li><a href="manage_healthtimeline.php">Timeline View</a></li>
                     </ul>
                 </li>
                 <li>
@@ -361,13 +373,10 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
                             <button class="btn btn-outline-primary" type="submit"><i class="fas fa-search"></i></button>
                         </form>
                         <ul class="nav navbar-nav ml-auto align-items-center">
-                            
                             <li class="nav-item dropdown">
                                 <a class="nav-link position-relative" href="#" id="navbarDropdownBell" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="fas fa-bell"></i>
-                                    <span id="bellBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display: none;">
-                                        0
-                                    </span>
+                                    <span id="bellBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display: none;">0</span>
                                 </a>
                                 <div class="dropdown-menu dropdown-menu-end shadow notification-dropdown" aria-labelledby="navbarDropdownBell">
                                     <div class="notification-header">
@@ -383,26 +392,15 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
                                 </div>
                             </li>
                             <li class="nav-item"><a class="nav-link" href="#"><i class="fas fa-cog"></i></a></li>
-                            
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="navbarDropdownUser" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <img src="https://ui-avatars.com/api/?name=<?php echo isset($_SESSION['full_name']) ? urlencode($_SESSION['full_name']) : 'Admin'; ?>&background=random" 
-                                           class="rounded-circle me-2" 
-                                           alt="User" 
-                                           width="32" height="32"
-                                           style="object-fit: cover;">
-                                    <span class="fw-semibold">
-                                        <?php echo isset($_SESSION['full_name']) ? htmlspecialchars($_SESSION['full_name']) : 'Admin'; ?>
-                                    </span>
+                                    <img src="https://ui-avatars.com/api/?name=Admin&background=random" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
+                                    <span class="fw-semibold">Admin</span>
                                 </a>
                                 <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="navbarDropdownUser" style="border: none;">
                                     <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2 text-muted"></i> My Profile</a></li>
                                     <li><hr class="dropdown-divider"></li>
-                                    <li>
-                                        <a class="dropdown-item text-danger" href="logout.php">
-                                            <i class="fas fa-sign-out-alt me-2"></i> Logout
-                                        </a>
-                                    </li>
+                                    <li><a class="dropdown-item text-danger" href="logout.php"><i class="fas fa-sign-out-alt me-2"></i> Logout</a></li>
                                 </ul>
                             </li>
                         </ul>
@@ -415,9 +413,9 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
                     <div class="col-6 col-md-4 col-lg-2">
                         <div class="card p-3 text-center h-100">
                             <div class="card-icon text-primary"><i class="fas fa-wheelchair"></i></div>
-                            <h3 class="card-title mb-0">4,569</h3>
+                            <h3 class="card-title mb-0"><?php echo $real_patient_count; ?></h3>
                             <p class="card-subtitle mb-2">Patient</p>
-                            <span class="card-status status-blue">Patient</span>
+                            <a href="patient list.php" class="card-status status-blue text-white text-decoration-none">Patient</a>
                         </div>
                     </div>
                     <div class="col-6 col-md-4 col-lg-2">
@@ -431,11 +429,21 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
                     <div class="col-6 col-md-4 col-lg-2">
                         <div class="card p-3 text-center h-100">
                             <div class="card-icon text-info"><i class="fas fa-calendar-alt"></i></div>
-                            <h3 class="card-title mb-0">56</h3>
+                            <h3 class="card-title mb-0"><?php echo $todays_appointments_count; ?></h3>
                             <p class="card-subtitle mb-2">Appointments</p>
-                            <span class="card-status status-cyan">Appointments</span>
+                            <a href="manage%20appoinments.php" class="card-status status-cyan text-white text-decoration-none">Appointments</a>
                         </div>
                     </div>
+
+                    <div class="col-6 col-md-4 col-lg-2">
+                        <div class="card p-3 text-center h-100">
+                            <div class="card-icon" style="color: #9b59b6;"><i class="fas fa-users"></i></div>
+                            <h3 class="card-title mb-0"><?php echo $total_visitors_count; ?></h3>
+                            <p class="card-subtitle mb-2">Visitors</p>
+                            <span class="card-status status-purple">Site Visitors</span>
+                        </div>
+                    </div>
+
                     <div class="col-6 col-md-4 col-lg-2">
                         <div class="card p-3 text-center h-100">
                             <div class="card-icon text-danger"><i class="fas fa-prescription-bottle-alt"></i></div>
@@ -444,21 +452,16 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
                             <span class="card-status status-red">Prescription</span>
                         </div>
                     </div>
-                    
-                   <div class="row g-3 mb-4">
+                </div>
+
+                <div class="row g-3 mb-4">
                     <div class="col-12 col-md-4">
                         <div class="card p-3 h-100">
                             <div class="chart-header">
                                 <h5 class="chart-title">New Patient</h5>
                                 <span class="chart-percentage text-success">14.22% High</span>
                             </div>
-                            <div class="chart-container">
-                                <canvas id="newPatientChart"></canvas>
-                            </div>
-                            <div class="d-flex justify-content-around mt-3 text-center">
-                                <div><h6 class="mb-0">Overall</h6><small>78%</small></div>
-                                <div><h6 class="mb-0">Monthly</h6><small>17%</small></div>
-                            </div>
+                            <div class="chart-container"><canvas id="newPatientChart"></canvas></div>
                         </div>
                     </div>
                     <div class="col-12 col-md-4">
@@ -467,13 +470,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
                                 <h5 class="chart-title">OPD Patients</h5>
                                 <span class="chart-percentage text-danger">11.12% Less</span>
                             </div>
-                            <div class="chart-container">
-                                <canvas id="opdPatientsChart"></canvas>
-                            </div>
-                            <div class="d-flex justify-content-around mt-3 text-center">
-                                <div><h6 class="mb-0">Overall</h6><small>78%</small></div>
-                                <div><h6 class="mb-0">Monthly</h6><small>17%</small></div>
-                            </div>
+                            <div class="chart-container"><canvas id="opdPatientsChart"></canvas></div>
                         </div>
                     </div>
                     <div class="col-12 col-md-4">
@@ -482,39 +479,11 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
                                 <h5 class="chart-title">Treatment</h5>
                                 <span class="chart-percentage text-success">19.5% High</span>
                             </div>
-                            <div class="chart-container">
-                                <canvas id="treatmentChart"></canvas>
-                            </div>
-                            <div class="d-flex justify-content-around mt-3 text-center">
-                                <div><h6 class="mb-0">Overall</h6><small>78%</small></div>
-                                <div><h6 class="mb-0">Monthly</h6><small>17%</small></div>
-                            </div>
+                            <div class="chart-container"><canvas id="treatmentChart"></canvas></div>
                         </div>
                     </div>
                 </div>
-
-                <div class="row g-3">
-                    <div class="col-12 col-md-4">
-                        <div class="card p-3 h-100">
-                            <h5 class="chart-title mb-3">Patients In</h5>
-                            <div class="chart-container" style="height: 250px;">
-                                <canvas id="patientsInChart"></canvas>
-                            </div>
-                            <div class="chart-legend">
-                                <div class="legend-item">
-                                    <div class="legend-color" style="background-color: #00c0ef;"></div>ICU
-                                </div>
-                                <div class="legend-item">
-                                    <div class="legend-color" style="background-color: #3c8dbc;"></div>OPD
-                                </div>
-                                <div class="legend-item">
-                                    <div class="legend-color" style="background-color: #d2d6de;"></div>Emergency
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                </div>
+            </div>
         </div>
     </div>
 
@@ -529,14 +498,12 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
                     <img src="" id="modalImg" class="rounded-circle mb-3 shadow-sm" width="100" height="100" style="object-fit:cover;">
                     <h4 id="modalName" class="mb-0 fw-bold"></h4>
                     <p class="text-muted small">Appointment: <span id="modalDate"></span></p>
-
                     <div class="card bg-light border-0 p-3 mt-3">
                         <div class="row text-start g-3">
                              <div class="col-12 border-bottom pb-2 mb-2">
                                 <label class="small text-muted d-block text-uppercase fw-bold">Patient Problem / Reason</label>
-                                <span id="modalReason" class="fw-bold text-dark" style="font-size: 1.1em;"></span>
+                                <span id="modalReason" class="fw-bold text-dark"></span>
                             </div>
-
                             <div class="col-6">
                                 <label class="small text-muted d-block">Age</label>
                                 <span id="modalAge" class="fw-semibold"></span>
@@ -545,25 +512,9 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
                                 <label class="small text-muted d-block">Blood Type</label>
                                 <span id="modalBlood" class="fw-bold text-danger"></span>
                             </div>
-                            <div class="col-6">
-                                <label class="small text-muted d-block">Height</label>
-                                <span id="modalHeight" class="fw-semibold"></span>
-                            </div>
-                            <div class="col-6">
-                                <label class="small text-muted d-block">Weight</label>
-                                <span id="modalWeight" class="fw-semibold"></span>
-                            </div>
-                            <div class="col-12 pt-1">
+                            <div class="col-12">
                                 <label class="small text-muted d-block">Email</label>
                                 <span id="modalEmail" class="fw-semibold"></span>
-                            </div>
-                            <div class="col-12">
-                                <label class="small text-muted d-block">Phone</label>
-                                <span id="modalPhone" class="fw-semibold"></span>
-                            </div>
-                             <div class="col-12">
-                                <label class="small text-muted d-block">Address</label>
-                                <span id="modalAddress" class="fw-semibold text-break"></span>
                             </div>
                         </div>
                     </div>
@@ -579,7 +530,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
-        // Main Sidebar Toggle Logic
+        // Sidebar Toggle
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('active');
             document.getElementById('content').classList.toggle('active');
@@ -587,203 +538,75 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
         document.getElementById('sidebarCollapse').addEventListener('click', toggleSidebar);
         document.getElementById('sidebarClose').addEventListener('click', toggleSidebar);
 
-        // --- NOTIFICATION LOGIC START ---
+        // Notifications
         function loadNotifications() {
             fetch('dashboard.php?fetch_notifications=1')
                 .then(response => response.json())
                 .then(data => {
-                    const list = document.getElementById('notificationList');
                     const badge = document.getElementById('bellBadge');
-                    
-                    // 1. UPDATE BADGE (Red Dot)
-                    // Only show if there are UNREAD notifications
                     if (data.unread_count > 0) {
                         badge.innerText = data.unread_count;
                         badge.style.display = 'block';
                         badge.classList.add('pulse-animation');
                     } else {
                         badge.style.display = 'none';
-                        badge.classList.remove('pulse-animation');
                     }
 
-                    // 2. UPDATE LIST
-                    list.innerHTML = ''; // Clear old list
+                    const list = document.getElementById('notificationList');
+                    list.innerHTML = ''; 
                     const notifications = data.notifications || [];
-
                     if (notifications.length > 0) {
                         notifications.forEach(patient => {
                             const item = document.createElement('div');
-                            // Add 'unread' class if status is 0 to style it differently
                             const isUnread = patient.admin_read_status == 0 ? 'unread' : '';
                             item.className = `notification-item ${isUnread}`;
-                            
-                            const pName = patient.full_name || 'Guest Patient';
-                            
                             item.innerHTML = `
-                                <div class="icon-box">
-                                    <i class="fas fa-calendar-check"></i>
-                                </div>
+                                <div class="icon-box"><i class="fas fa-calendar-check"></i></div>
                                 <div class="flex-grow-1">
-                                    <h6 class="mb-0 fw-bold" style="font-size:0.95rem;">${pName}</h6>
-                                    <small class="text-muted" style="font-size:0.8rem;">
-                                        Booked: ${patient.appointment_date}
-                                    </small>
+                                    <h6 class="mb-0 fw-bold">${patient.full_name || 'Guest'}</h6>
+                                    <small class="text-muted">Booked: ${patient.appointment_date}</small>
                                 </div>
                                 ${patient.admin_read_status == 0 ? '<small class="text-danger"><i class="fas fa-circle" style="font-size:8px;"></i></small>' : ''}
                             `;
-                            
-                            // On Click: Open Details + Mark as Read
                             item.onclick = function() {
                                 openPatientModal(patient);
                                 markAsRead(patient.appointment_id);
                             };
-                            
                             list.appendChild(item);
                         });
                     } else {
                         list.innerHTML = '<div class="text-center p-3 small text-muted">No new appointments</div>';
                     }
-                })
-                .catch(err => console.error('Error fetching notifications:', err));
+                });
         }
 
-        // New function to update DB status
         function markAsRead(appointmentId) {
             const formData = new FormData();
             formData.append('mark_read_id', appointmentId);
-
-            fetch('dashboard.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(() => {
-                // Reload notifications to update the badge immediately
-                loadNotifications();
-            })
-            .catch(err => console.error('Error marking read:', err));
+            fetch('dashboard.php', { method: 'POST', body: formData })
+            .then(() => loadNotifications());
         }
 
         function openPatientModal(data) {
-            // Populate Modal Fields
             document.getElementById('modalName').innerText = data.full_name || 'N/A';
             document.getElementById('modalDate').innerText = (data.appointment_date || '') + ' ' + (data.appointment_time || '');
-            
-            // NEW: Populate Reason
-            document.getElementById('modalReason').innerText = data.initial_health_issue || 'No reason provided';
-
+            document.getElementById('modalReason').innerText = data.initial_health_issue || 'No reason';
             document.getElementById('modalAge').innerText = (data.age || '-') + ' Yrs';
             document.getElementById('modalBlood').innerText = data.blood_type || '-';
-            document.getElementById('modalHeight').innerText = (data.height || '0') + ' cm';
-            document.getElementById('modalWeight').innerText = (data.weight || '0') + ' kg';
-            document.getElementById('modalPhone').innerText = data.phone_number || '-';
             document.getElementById('modalEmail').innerText = data.email || '-';
-            document.getElementById('modalAddress').innerText = data.address || 'No address provided';
-
             const nameEncoded = encodeURIComponent(data.full_name || 'User');
-            document.getElementById('modalImg').src = `https://ui-avatars.com/api/?name=${nameEncoded}&background=random&size=200`;
-
-            var myModal = new bootstrap.Modal(document.getElementById('patientDetailsModal'));
-            myModal.show();
+            document.getElementById('modalImg').src = `https://ui-avatars.com/api/?name=${nameEncoded}&background=random`;
+            new bootstrap.Modal(document.getElementById('patientDetailsModal')).show();
         }
 
         document.addEventListener('DOMContentLoaded', loadNotifications);
         setInterval(loadNotifications, 5000); 
-        // --- NOTIFICATION LOGIC END ---
 
-
-        // Chart.js Configuration (UNCHANGED)
-        const newPatientCtx = document.getElementById('newPatientChart').getContext('2d');
-        new Chart(newPatientCtx, {
-            type: 'bar',
-            data: {
-                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-                datasets: [{
-                    label: 'New Patients',
-                    data: [10, 20, 30, 40, 25, 35, 45, 30, 20, 10, 5, 15],
-                    backgroundColor: '#3498db',
-                    borderRadius: 5
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: { beginAtZero: true, grid: { display: false } },
-                    x: { grid: { display: false } }
-                }
-            }
-        });
-
-        const opdPatientsCtx = document.getElementById('opdPatientsChart').getContext('2d');
-        new Chart(opdPatientsCtx, {
-            type: 'line',
-            data: {
-                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'],
-                datasets: [{
-                    label: 'OPD Patients',
-                    data: [20, 40, 30, 50, 35, 45, 30, 20, 30, 20],
-                    borderColor: '#e67e22',
-                    backgroundColor: 'rgba(230, 126, 34, 0.3)',
-                    fill: true,
-                    tension: 0.4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: { beginAtZero: true, grid: { display: false } },
-                    x: { grid: { display: false } }
-                }
-            }
-        });
-
-        const treatmentCtx = document.getElementById('treatmentChart').getContext('2d');
-        new Chart(treatmentCtx, {
-            type: 'line',
-            data: {
-                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'],
-                datasets: [{
-                    label: 'Treatment',
-                    data: [15, 25, 20, 35, 30, 40, 25, 15, 20, 15],
-                    borderColor: '#2ecc71',
-                    tension: 0.4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: { beginAtZero: true, grid: { display: false } },
-                    x: { grid: { display: false } }
-                }
-            }
-        });
-
-        const patientsInCtx = document.getElementById('patientsInChart').getContext('2d');
-        new Chart(patientsInCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ['ICU', 'OPD', 'Emergency'],
-                datasets: [{
-                    data: [300, 150, 100],
-                    backgroundColor: ['#00c0ef', '#3c8dbc', '#d2d6de'],
-                    borderWidth: 0,
-                    cutout: '70%'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: { enabled: true }
-                }
-            }
-        });
+        // Charts
+        const opt = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
+        new Chart(document.getElementById('newPatientChart'), { type: 'bar', data: { labels: ['Jan', 'Feb', 'Mar'], datasets: [{ data: [10, 20, 30], backgroundColor: '#3498db' }] }, options: opt });
+        new Chart(document.getElementById('opdPatientsChart'), { type: 'line', data: { labels: ['Jan', 'Feb', 'Mar'], datasets: [{ data: [20, 40, 30], borderColor: '#e67e22', fill: true }] }, options: opt });
+        new Chart(document.getElementById('treatmentChart'), { type: 'line', data: { labels: ['Jan', 'Feb', 'Mar'], datasets: [{ data: [15, 25, 20], borderColor: '#2ecc71' }] }, options: opt });
     </script>
 </body>
 </html>

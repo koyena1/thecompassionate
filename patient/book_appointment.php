@@ -6,7 +6,7 @@ session_start();
 $patient_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 1;
 $message = "";
 $messageType = "";
-$popupMessage = ""; // Variable to trigger JS popup
+$popupMessage = ""; 
 
 // Get Patient Info
 $res = $conn->query("SELECT * FROM patients WHERE patient_id = '$patient_id'");
@@ -14,71 +14,68 @@ $patient_data = $res->fetch_assoc();
 $display_name = $patient_data['full_name'] ?? 'Patient';
 $display_email = $patient_data['email'] ?? '';
 
-// Define the 2-hour gap slots (Database Time => Display Time)
-$time_slots = [
+// --- 1. DEFINE ALL POSSIBLE SLOTS ---
+$all_time_slots = [
     "10:00:00" => "10:00 AM - 12:00 PM",
     "13:00:00" => "01:00 PM - 03:00 PM",
     "15:00:00" => "03:00 PM - 05:00 PM",
     "17:00:00" => "05:00 PM - 07:00 PM"
 ];
 
-// Handle Post
+// --- 2. DETERMINE SELECTED DATE ---
+// Priority: POST (if form submitted) -> GET (if date changed) -> Today
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['date'])) {
+    $selected_date = $_POST['date'];
+} elseif (isset($_GET['date'])) {
+    $selected_date = $_GET['date'];
+} else {
+    $selected_date = date('Y-m-d');
+}
+
+// --- 3. FETCH BOOKED SLOTS FOR SELECTED DATE ---
+$booked_slots = [];
+$slotStmt = $conn->prepare("SELECT appointment_time FROM appointments WHERE appointment_date = ? AND status != 'Cancelled'");
+$slotStmt->bind_param("s", $selected_date);
+$slotStmt->execute();
+$slotResult = $slotStmt->get_result();
+
+while ($row = $slotResult->fetch_assoc()) {
+    $booked_slots[] = $row['appointment_time'];
+}
+$slotStmt->close();
+
+// --- 4. FILTER AVAILABLE SLOTS ---
+// Create a new array containing ONLY slots that are NOT in the database
+$available_slots = [];
+foreach ($all_time_slots as $time_value => $label) {
+    if (!in_array($time_value, $booked_slots)) {
+        $available_slots[$time_value] = $label;
+    }
+}
+
+// --- HANDLE FORM SUBMISSION ---
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $date = $_POST['date'];
-    $time = $_POST['time']; // This will be the start time (e.g., 10:00:00)
+    $time = $_POST['time'];
     $issue = $_POST['issue'];
     $status = 'Pending'; 
 
-    // 1. Check if the SPECIFIC slot is booked
-    $checkStmt = $conn->prepare("SELECT appointment_id FROM appointments WHERE appointment_date = ? AND appointment_time = ? AND status != 'Cancelled'");
-    $checkStmt->bind_param("ss", $date, $time);
-    $checkStmt->execute();
-    $checkStmt->store_result();
-
-    if ($checkStmt->num_rows > 0) {
-        // --- SLOT IS TAKEN: FIND SUGGESTIONS ---
-        
-        // A. Get ALL booked times for this specific date
-        $bookedStmt = $conn->prepare("SELECT appointment_time FROM appointments WHERE appointment_date = ? AND status != 'Cancelled'");
-        $bookedStmt->bind_param("s", $date);
-        $bookedStmt->execute();
-        $result = $bookedStmt->get_result();
-        
-        $booked_times = [];
-        while ($row = $result->fetch_assoc()) {
-            $booked_times[] = $row['appointment_time']; // Stores '10:00:00', etc.
-        }
-        $bookedStmt->close();
-
-        // B. Calculate which slots are FREE
-        $available_suggestions = [];
-        foreach ($time_slots as $slot_time => $slot_label) {
-            // If the slot_time is NOT in the booked_times array, it is free
-            if (!in_array($slot_time, $booked_times)) {
-                $available_suggestions[] = $slot_label;
-            }
-        }
-
-        // C. Build the Popup Message
-        $popupMessage = "This time slot is already booked!";
-        
-        if (!empty($available_suggestions)) {
-            $popupMessage .= "\\n\\nHere are the available slots for " . $date . ":\\n- " . implode("\\n- ", $available_suggestions);
-        } else {
-            $popupMessage .= "\\n\\nSorry, fully booked! No slots available for this date.";
-        }
-
-        $message = "Slot unavailable. Please check the popup for available times.";
+    // Double check availability (Security measure)
+    if (in_array($time, $booked_slots)) {
+        $popupMessage = "Sorry, this slot was just booked by someone else! Please choose another.";
+        $message = "Slot unavailable.";
         $messageType = "error";
-
     } else {
-        // 2. Slot is free, proceed to insert
+        // Slot is free, proceed to insert
         $stmt = $conn->prepare("INSERT INTO appointments (patient_id, appointment_date, appointment_time, initial_health_issue, status) VALUES (?, ?, ?, ?, ?)");
         if ($stmt) {
             $stmt->bind_param("issss", $patient_id, $date, $time, $issue, $status);
             if ($stmt->execute()) {
                 $message = "Appointment booked successfully!";
                 $messageType = "success";
+                // Refresh booked slots to hide the one just booked immediately
+                $booked_slots[] = $time; 
+                unset($available_slots[$time]);
             } else {
                 $message = "Error: " . $conn->error;
                 $messageType = "error";
@@ -86,7 +83,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $stmt->close();
         }
     }
-    $checkStmt->close();
 }
 ?>
 
@@ -117,7 +113,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     
     <?php if (!empty($popupMessage)): ?>
     <script>
-        // We use javascript alert to show the message constructed in PHP
         alert("<?php echo $popupMessage; ?>");
     </script>
     <?php endif; ?>
@@ -132,15 +127,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <div class="form-grid">
                     <div>
                         <label>Select Date</label>
-                        <input type="date" name="date" required min="<?php echo date('Y-m-d'); ?>">
+                        <input type="date" 
+                               name="date" 
+                               required 
+                               min="<?php echo date('Y-m-d'); ?>" 
+                               value="<?php echo $selected_date; ?>" 
+                               onchange="window.location.href='?date='+this.value">
                     </div>
                     <div>
                         <label>Preferred Time Slot</label>
                         <select name="time" required>
                             <option value="">Select a time slot</option>
-                            <?php foreach($time_slots as $time_value => $label): ?>
-                                <option value="<?php echo $time_value; ?>"><?php echo $label; ?></option>
-                            <?php endforeach; ?>
+                            <?php if(empty($available_slots)): ?>
+                                <option value="" disabled>No slots available for this date</option>
+                            <?php else: ?>
+                                <?php foreach($available_slots as $time_value => $label): ?>
+                                    <option value="<?php echo $time_value; ?>"><?php echo $label; ?></option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </select>
                     </div>
                     <div>

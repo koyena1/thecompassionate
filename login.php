@@ -1,15 +1,25 @@
 <?php
 // login.php
 session_start();
+
+// --- DATABASE CONNECTION ---
 require_once 'config/db.php';
+// ---------------------------
 
 $error = "";
+$success = "";
+
+// Check for success message coming from verify.php
+if (isset($_SESSION['success_msg'])) {
+    $success = $_SESSION['success_msg'];
+    unset($_SESSION['success_msg']);
+}
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $email = trim($_POST['email']);
+    $email = $_POST['email'];
     $password = $_POST['password'];
 
-    // 1. ADMIN CHECK
+    // 1. FIRST CHECK: Is the user an ADMIN?
     $sql_admin = "SELECT admin_id, full_name, email, password_hash FROM admin_users WHERE email = ?";
     $stmt = $conn->prepare($sql_admin);
     
@@ -19,19 +29,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $result_admin = $stmt->get_result();
 
         if ($result_admin->num_rows === 1) {
+            // --- ADMIN FOUND ---
             $user = $result_admin->fetch_assoc();
+            
             if (password_verify($password, $user['password_hash'])) {
+                // Admin Login Success
                 $_SESSION['user_id'] = $user['admin_id'];
                 $_SESSION['email'] = $user['email'];
                 $_SESSION['role'] = 'admin';
+                $_SESSION['full_name'] = $user['full_name'];
+
                 header("Location: admin/dashboard.php");
                 exit();
             } else {
                 $error = "Invalid password.";
             }
         } else {
-            // 2. PATIENT CHECK
+            // 2. SECOND CHECK: If not Admin, is the user a PATIENT?
             $stmt->close(); 
+
+            // Include 'is_verified' in the select
             $sql_patient = "SELECT patient_id, full_name, email, password_hash, is_verified FROM patients WHERE email = ?";
             $stmt = $conn->prepare($sql_patient);
             $stmt->bind_param("s", $email);
@@ -39,22 +56,25 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $result_patient = $stmt->get_result();
 
             if ($result_patient->num_rows === 1) {
+                // --- PATIENT FOUND ---
                 $patient = $result_patient->fetch_assoc();
 
                 if (password_verify($password, $patient['password_hash'])) {
                     
-                    // --- CHECK IF VERIFIED ---
-                    if ($patient['is_verified'] == 0) {
-                        $error = "Please verify your email address via the link sent to your inbox.";
-                    } else {
-                        // Success
+                    // --- CHECK IF EMAIL IS VERIFIED ---
+                    if ($patient['is_verified'] == 1) {
+                        // Patient Login Success
                         $_SESSION['user_id'] = $patient['patient_id'];
                         $_SESSION['email'] = $patient['email'];
                         $_SESSION['role'] = 'patient';
                         $_SESSION['full_name'] = $patient['full_name'];
+
                         header("Location: patient/dashboard.php");
                         exit();
+                    } else {
+                        $error = "Please verify your email address before logging in.";
                     }
+
                 } else {
                     $error = "Invalid password.";
                 }
@@ -63,10 +83,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
         }
         if(isset($stmt) && $stmt) $stmt->close();
+    } else {
+        $error = "Database error.";
     }
 }
 $conn->close();
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -76,10 +99,12 @@ $conn->close();
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
-        /* SAME CSS AS YOUR ORIGINAL FILE */
+        /* Reusing your exact CSS */
+        /* RESET & BASICS */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { height: 100vh; display: flex; overflow: hidden; }
 
+        /* LEFT PANEL */
         .left-panel { flex: 1; background-color: #ffffff; position: relative; display: flex; align-items: flex-end; justify-content: center; }
         .decoration-star { position: absolute; color: #589167; font-size: 24px; animation: twinkle 2s infinite ease-in-out; }
         .star-1 { top: 10%; left: 10%; font-size: 30px; }
@@ -87,11 +112,13 @@ $conn->close();
         .heartbeat-line { position: absolute; top: 50%; left: 0; width: 100%; opacity: 0.1; z-index: 1; }
         .doctor-img { max-width: 80%; height: auto; z-index: 2; filter: drop-shadow(0px 10px 15px rgba(0,0,0,0.1)); }
 
+        /* RIGHT PANEL */
         .right-panel { flex: 1; background-color: #589167; display: flex; flex-direction: column; justify-content: center; padding: 0 100px; color: white; position: relative; clip-path: polygon(15% 0, 100% 0, 100% 100%, 0% 100%); }
         .white-star { color: white; opacity: 0.8; position: absolute; }
         .ws-1 { top: 20%; right: 10%; font-size: 40px; }
         .ws-2 { bottom: 30%; left: 15%; font-size: 30px; }
 
+        /* FORM STYLING */
         .login-content { width: 100%; max-width: 400px; margin-left: auto; margin-right: 50px; }
         h2 { font-size: 2rem; margin-bottom: 10px; font-weight: 600; }
         .subtitle { margin-bottom: 40px; font-size: 0.9rem; opacity: 0.8; }
@@ -106,11 +133,15 @@ $conn->close();
         .btn-login:hover { background: white; color: #8E3E8C; }
         .register-link { text-align: center; margin-top: 20px; font-size: 0.8rem; }
         .register-link a { color: white; font-weight: bold; text-decoration: underline; }
+        
         .error-msg { background: rgba(255,0,0,0.2); padding: 10px; border-radius: 10px; margin-bottom: 15px; font-size: 0.9rem; text-align: center; }
-        .success-msg { background: rgba(0,255,0,0.2); padding: 10px; border-radius: 10px; margin-bottom: 15px; font-size: 0.9rem; text-align: center; }
+        /* Added class for Success Message matching error design but green */
+        .success-msg { background: rgba(0, 255, 0, 0.2); padding: 10px; border-radius: 10px; margin-bottom: 15px; font-size: 0.9rem; text-align: center; }
 
+        /* ANIMATIONS */
         @keyframes twinkle { 0% { opacity: 0.5; transform: scale(1); } 50% { opacity: 1; transform: scale(1.2); } 100% { opacity: 0.5; transform: scale(1); } }
 
+        /* RESPONSIVE */
         @media (max-width: 768px) {
             body { flex-direction: column; overflow-y: auto; }
             .left-panel { display: none; }
@@ -137,6 +168,10 @@ $conn->close();
         <div class="login-content">
             <h2>Welcome Back !</h2>
             <p class="subtitle">Login Your Account</p>
+
+            <?php if(!empty($success)): ?>
+                <div class="success-msg"><?php echo $success; ?></div>
+            <?php endif; ?>
 
             <?php if(!empty($error)): ?>
                 <div class="error-msg"><?php echo $error; ?></div>
