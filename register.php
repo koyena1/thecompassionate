@@ -1,18 +1,8 @@
 <?php
 // register.php
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
-
-// 1. Load Composer's autoloader
-require 'vendor/autoload.php';
-
-// OR if you downloaded PHPMailer manually, comment out the line above and uncomment these:
-// require 'PHPMailer/src/Exception.php';
-// require 'PHPMailer/src/PHPMailer.php';
-// require 'PHPMailer/src/SMTP.php';
-
 session_start(); 
 include 'config/db.php'; 
+require 'mailer.php'; // Include the mailer functions
 
 $error = "";
 $success = "";
@@ -35,10 +25,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $error = "Invalid email format.";
     } 
     else {
-        // Domain check
         $domain = substr(strrchr($email, "@"), 1);
         if (!checkdnsrr($domain, "MX")) {
-            $error = "Email domain does not exist. Please use a real email provider.";
+            $error = "Email domain does not exist.";
         }
     }
 
@@ -66,44 +55,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         VALUES ('$name', '$email', '$whatsapp', '$hashed_password', '$token', 0)";
 
                 if ($conn->query($sql) === TRUE) {
-                    
-                    // --- SEND EMAIL LOGIC ---
-                    $mail = new PHPMailer(true);
-                    
-                    try {
-                        // Server settings
-                        $mail->isSMTP();
-                        $mail->Host       = 'smtp.gmail.com'; 
-                        $mail->SMTPAuth   = true;
-                        $mail->Username   = 'your-email@gmail.com'; // REPLACE THIS
-                        $mail->Password   = 'your-app-password';    // REPLACE THIS
-                        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-                        $mail->Port       = 587;
-
-                        // Recipients
-                        $mail->setFrom('your-email@gmail.com', 'Medical App');
-                        $mail->addAddress($email, $name);
-
-                        // Content
-                        // IMPORTANT: Update 'http://localhost/your-project/' to your actual folder path
-                        $verifyLink = "http://localhost/your-project/verify.php?token=" . $token;
-
-                        $mail->isHTML(true);
-                        $mail->Subject = 'Verify your Account';
-                        $mail->Body    = "Hi $name,<br><br>Please click the link below to verify your account:<br><br><a href='$verifyLink'>Verify Email</a>";
-
-                        $mail->send();
-                        $success = "Registration successful! Please check your email to verify your account.";
-                        
+                    // Send verification email using the mailer.php function
+                    if (sendVerificationEmail($email, $token, $name)) {
+                        $success = "Registration successful! Please check your email ($email) to verify your account.";
                         // Clear POST data so form is empty
                         $_POST = array();
-                        
-                    } catch (Exception $e) {
-                        $error = "Account created but email could not be sent. Error: {$mail->ErrorInfo}";
+                    } else {
+                        $error = "Account created but email failed to send. Please contact support.";
                     }
-
                 } else {
-                    $error = "Error: " . $conn->error;
+                    $error = "Database Error: " . $conn->error;
                 }
             }
         }
@@ -236,7 +197,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <script>
         function togglePassword(inputId, icon) {
             const input = document.getElementById(inputId);
-            
             if (input.type === "password") {
                 input.type = "text";
                 icon.classList.remove("fa-eye");
@@ -248,6 +208,5 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
         }
     </script>
-
 </body>
 </html>

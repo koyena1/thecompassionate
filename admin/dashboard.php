@@ -28,7 +28,7 @@ if (isset($_GET['fetch_notifications'])) {
     $servername = "localhost";
     $username = "root";
     $password = "";
-    $dbname = "safe_space_db";
+    $dbname = "u813881648_doctors"; // Updated to your new database name
 
     $conn = new mysqli($servername, $username, $password, $dbname);
     if ($conn->connect_error) { echo json_encode([]); exit; }
@@ -88,7 +88,8 @@ $conn_main = new mysqli($servername, $username, $password, $dbname);
 
 $real_patient_count = 0;
 $todays_appointments_count = 0;
-$total_visitors_count = 0; // New count for visitor tracking
+$total_visitors_count = 0; 
+$admin_display_name = "Admin"; // Fallback name
 
 if (!$conn_main->connect_error) {
     // 3.1 Count Total Patients
@@ -106,11 +107,18 @@ if (!$conn_main->connect_error) {
         $todays_appointments_count = $apptRow['today_count'];
     }
 
-    // 3.3 Count Real Site Visitors
+    // 3.3 Count Real Site Visitors from site_visitors table
     $visitorSql = "SELECT COUNT(*) as visitor_count FROM site_visitors";
     $visitorResult = $conn_main->query($visitorSql);
     if ($visitorResult && $visRow = $visitorResult->fetch_assoc()) {
         $total_visitors_count = $visRow['visitor_count'];
+    }
+
+    // 3.4 Fetch Admin Name (Dr. Usri Sengupta)
+    $adminSql = "SELECT full_name FROM admin_users LIMIT 1";
+    $adminResult = $conn_main->query($adminSql);
+    if ($adminResult && $adminRow = $adminResult->fetch_assoc()) {
+        $admin_display_name = $adminRow['full_name'];
     }
 }
 ?>
@@ -270,7 +278,7 @@ if (!$conn_main->connect_error) {
     <div class="d-flex">
         <nav id="sidebar">
             <div class="sidebar-header d-flex justify-content-between align-items-center">
-                <h3><i class="fas fa-heartbeat text-danger me-2"></i>Admin</h3>
+                <h3><i class="fas fa-heartbeat text-danger me-2"></i><?php echo $admin_display_name; ?></h3>
                 <div id="sidebarClose" class="d-lg-none" style="cursor: pointer; font-size: 1.5rem; color: #333;">
                     <i class="fas fa-times"></i>
                 </div>
@@ -348,16 +356,6 @@ if (!$conn_main->connect_error) {
                     <a href="#"><i class="fas fa-ellipsis-h"></i> Payment Gateway</a>
                 </li>
             </ul>
-
-            <div class="sidebar-banner">
-                <h5>Make an Appointments</h5>
-                <p class="small">Best Health Care here →</p>
-            </div>
-
-            <div class="sidebar-footer">
-                <p class="mb-0">Rhythm Admin Dashboard</p>
-                <p class="mb-0">© 2022 All Rights Reserved</p>
-            </div>
         </nav>
 
         <div id="content">
@@ -394,8 +392,8 @@ if (!$conn_main->connect_error) {
                             <li class="nav-item"><a class="nav-link" href="#"><i class="fas fa-cog"></i></a></li>
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="navbarDropdownUser" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <img src="https://ui-avatars.com/api/?name=Admin&background=random" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
-                                    <span class="fw-semibold">Admin</span>
+                                    <img src="https://ui-avatars.com/api/?name=<?php echo urlencode($admin_display_name); ?>&background=random" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
+                                    <span class="fw-semibold"><?php echo $admin_display_name; ?></span>
                                 </a>
                                 <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="navbarDropdownUser" style="border: none;">
                                     <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2 text-muted"></i> My Profile</a></li>

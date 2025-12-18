@@ -1,6 +1,15 @@
 <?php
 // 1. DATABASE CONNECTION
 require_once 'config/db.php';
+// --- VISITOR TRACKING LOGIC ---
+$visitor_ip = $_SERVER['REMOTE_ADDR'];
+$visit_date = date('Y-m-d');
+
+// Insert or ignore if the IP has already visited today to ensure "Unique Daily Visitors"
+$stmt = $conn->prepare("INSERT IGNORE INTO site_visitors (ip_address, visit_date) VALUES (?, ?)");
+$stmt->bind_param("ss", $visitor_ip, $visit_date);
+$stmt->execute();
+$stmt->close();
 ?>
 
 <!DOCTYPE html>
