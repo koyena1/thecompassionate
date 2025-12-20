@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Payment System Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { background: #f5f5f5; padding: 20px; margin: 20px 0; border-radius: 5px; }
+        button { background: #7B3F00; color: white; padding: 10px 20px; border: none; cursor: pointer; border-radius: 5px; }
+        button:hover { background: #5d2f00; }
+        .result { background: #fff; padding: 15px; margin-top: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { color: green; }
+        .error { color: red; }
+        pre { background: #2d2d2d; color: #f8f8f2; padding: 15px; border-radius: 5px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Payment System Debugger</h1>
+
+    <div class="test-section">
+        <h2>Test 1: Check Configuration</h2>
+        <button onclick="testConfig()">Check Config</button>
+        <div id="config-result" class="result" style="display:none;"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 2: Create Appointment (AJAX)</h2>
+        <button onclick="testCreateAppointment()">Create Test Appointment</button>
+        <div id="appointment-result" class="result" style="display:none;"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 3: Create Razorpay Order</h2>
+        <input type="number" id="test-appointment-id" placeholder="Appointment ID" value="1">
+        <input type="number" id="test-amount" placeholder="Amount" value="700">
+        <button onclick="testRazorpayOrder()">Create Razorpay Order</button>
+        <div id="razorpay-result" class="result" style="display:none;"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 4: Full Payment Flow</h2>
+        <button onclick="testFullFlow()">Test Complete Flow</button>
+        <div id="full-flow-result" class="result" style="display:none;"></div>
+    </div>
+
+    <script>
+        function testConfig() {
+            const result = document.getElementById('config-result');
+            result.style.display = 'block';
+            result.innerHTML = '<p>Checking configuration...</p>';
+
+            fetch('payment_config.php')
+                .then(response => response.text())
+                .then(data => {
+                    result.innerHTML = `
+                        <p class="success">✓ Config file accessible</p>
+                        <p>Note: Config file should not output HTML. If you see PHP code above, there's an issue.</p>
+                    `;
+                })
+                .catch(error => {
+                    result.innerHTML = `<p class="error">✗ Error: ${error.message}</p>`;
+                });
+        }
+
+        function testCreateAppointment() {
+            const result = document.getElementById('appointment-result');
+            result.style.display = 'block';
+            result.innerHTML = '<p>Creating test appointment...</p>';
+
+            const formData = new FormData();
+            formData.append('date', '2025-12-25');
+            formData.append('time', '10:00');
+            formData.append('issue', 'Test appointment for debugging');
+            formData.append('payment_gateway', 'razorpay');
+
+            fetch('create_appointment_ajax.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Appointment response:', data);
+                result.innerHTML = `
+                    <p class="success">✓ Appointment created successfully</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+                document.getElementById('test-appointment-id').value = data.appointment_id;
+            })
+            .catch(error => {
+                result.innerHTML = `<p class="error">✗ Error: ${error.message}</p>`;
+                console.error('Error:', error);
+            });
+        }
+
+        function testRazorpayOrder() {
+            const result = document.getElementById('razorpay-result');
+            result.style.display = 'block';
+            result.innerHTML = '<p>Creating Razorpay order...</p>';
+
+            const formData = new FormData();
+            formData.append('appointment_id', document.getElementById('test-appointment-id').value);
+            formData.append('amount', document.getElementById('test-amount').value);
+
+            fetch('create_razorpay_order.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.text())
+            .then(text => {
+                console.log('Raw response:', text);
+                try {
+                    const data = JSON.parse(text);
+                    console.log('Razorpay order response:', data);
+                    
+                    if (data.success) {
+                        result.innerHTML = `
+                            <p class="success">✓ Razorpay order created successfully</p>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        `;
+                    } else {
+                        result.innerHTML = `
+                            <p class="error">✗ Failed to create order</p>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        `;
+                    }
+                } catch (e) {
+                    result.innerHTML = `
+                        <p class="error">✗ Invalid JSON response</p>
+                        <p>Raw response:</p>
+                        <pre>${text}</pre>
+                    `;
+                }
+            })
+            .catch(error => {
+                result.innerHTML = `<p class="error">✗ Error: ${error.message}</p>`;
+                console.error('Error:', error);
+            });
+        }
+
+        function testFullFlow() {
+            const result = document.getElementById('full-flow-result');
+            result.style.display = 'block';
+            result.innerHTML = '<p>Testing full payment flow...</p>';
+
+            let output = '<h3>Flow Progress:</h3>';
+
+            // Step 1: Create appointment
+            output += '<p>1️⃣ Creating appointment...</p>';
+            result.innerHTML = output;
+
+            const formData = new FormData();
+            formData.append('date', '2025-12-25');
+            formData.append('time', '10:00');
+            formData.append('issue', 'Full flow test');
+            formData.append('payment_gateway', 'razorpay');
+
+            fetch('create_appointment_ajax.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(appointmentData => {
+                output += `<p class="success">✓ Appointment created: ID ${appointmentData.appointment_id}</p>`;
+                result.innerHTML = output;
+
+                // Step 2: Create Razorpay order
+                output += '<p>2️⃣ Creating Razorpay order...</p>';
+                result.innerHTML = output;
+
+                const orderData = new FormData();
+                orderData.append('appointment_id', appointmentData.appointment_id);
+                orderData.append('amount', appointmentData.amount);
+
+                return fetch('create_razorpay_order.php', {
+                    method: 'POST',
+                    body: orderData
+                })
+                .then(response => response.json())
+                .then(orderResponse => {
+                    if (orderResponse.success) {
+                        output += `<p class="success">✓ Razorpay order created: ${orderResponse.order_id}</p>`;
+                        output += '<p>3️⃣ All backend steps successful! Payment modal would open now.</p>';
+                        output += '<pre>' + JSON.stringify({
+                            appointment: appointmentData,
+                            order: orderResponse
+                        }, null, 2) + '</pre>';
+                    } else {
+                        output += `<p class="error">✗ Failed to create Razorpay order: ${orderResponse.message}</p>`;
+                        if (orderResponse.error) {
+                            output += '<pre>' + orderResponse.error + '</pre>';
+                        }
+                    }
+                    result.innerHTML = output;
+                });
+            })
+            .catch(error => {
+                output += `<p class="error">✗ Error: ${error.message}</p>`;
+                result.innerHTML = output;
+                console.error('Error:', error);
+            });
+        }
+    </script>
+</body>
+</html>

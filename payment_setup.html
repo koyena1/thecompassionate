@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Setup - Quick Config</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #7B3F00; margin-bottom: 10px; }
+        h2 { color: #333; border-bottom: 2px solid #7B3F00; padding-bottom: 10px; }
+        .step {
+            background: #f9f9f9;
+            padding: 15px;
+            margin: 15px 0;
+            border-left: 4px solid #7B3F00;
+        }
+        .code {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .success { color: #10b981; font-weight: bold; }
+        .warning { color: #f59e0b; font-weight: bold; }
+        .error { color: #ef4444; font-weight: bold; }
+        .btn {
+            background: #7B3F00;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin: 5px;
+        }
+        .btn:hover { background: #5d2f00; }
+        ul { line-height: 1.8; }
+        .checklist input[type="checkbox"] {
+            margin-right: 10px;
+            transform: scale(1.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💳 Payment Gateway Setup Guide</h1>
+        <p>Follow these steps to configure payment integration for your appointment booking system.</p>
+
+        <h2>📋 Step 1: Database Configuration</h2>
+        <div class="step">
+            <p><strong>Execute SQL Script:</strong></p>
+            <ol>
+                <li>Open phpMyAdmin: <a href="http://localhost/phpmyadmin" target="_blank">http://localhost/phpmyadmin</a></li>
+                <li>Select database: <code>safe_space_db</code></li>
+                <li>Click "SQL" tab</li>
+                <li>Open file: <code>payment_schema.sql</code></li>
+                <li>Copy all content and paste into SQL window</li>
+                <li>Click "Go" button</li>
+            </ol>
+            <p class="success">✓ This adds payment columns to appointments table</p>
+        </div>
+
+        <h2>🔑 Step 2: Razorpay Configuration</h2>
+        <div class="step">
+            <ol>
+                <li>Sign up at: <a href="https://razorpay.com/" target="_blank">https://razorpay.com/</a></li>
+                <li>Login to Dashboard</li>
+                <li>Go to: Settings → API Keys</li>
+                <li>Click "Generate Test Keys"</li>
+                <li>Copy Key ID and Key Secret</li>
+                <li>Open: <code>patient/payment_config.php</code></li>
+                <li>Replace these lines:</li>
+            </ol>
+            <div class="code">define('RAZORPAY_KEY_ID', 'rzp_test_XXXXXXXXXXXX');
+define('RAZORPAY_KEY_SECRET', 'YYYYYYYYYYYYYYYYYYYY');</div>
+        </div>
+
+        <h2>💰 Step 3: Cashfree Configuration</h2>
+        <div class="step">
+            <ol>
+                <li>Sign up at: <a href="https://merchant.cashfree.com/" target="_blank">https://merchant.cashfree.com/</a></li>
+                <li>Login to Merchant Dashboard</li>
+                <li>Go to: Developers → API Keys</li>
+                <li>Copy App ID and Secret Key (Test mode)</li>
+                <li>Open: <code>patient/payment_config.php</code></li>
+                <li>Replace these lines:</li>
+            </ol>
+            <div class="code">define('CASHFREE_APP_ID', 'XXXXXXXXXXXXXXXXXXXX');
+define('CASHFREE_SECRET_KEY', 'YYYYYYYYYYYYYYYYYYYY');
+define('CASHFREE_ENV', 'TEST'); // TEST or PROD</div>
+        </div>
+
+        <h2>📧 Step 4: Admin Email Configuration</h2>
+        <div class="step">
+            <p>Open <code>patient/payment_config.php</code> and update admin email:</p>
+            <div class="code">define('ADMIN_EMAIL', 'your_admin_email@example.com');</div>
+            <p class="warning">⚠️ Admin will receive invoice copies for all bookings</p>
+        </div>
+
+        <h2>✅ Step 5: Verify Setup</h2>
+        <div class="step checklist">
+            <p><strong>Checklist:</strong></p>
+            <label><input type="checkbox"> Database updated (payment_schema.sql executed)</label><br>
+            <label><input type="checkbox"> Razorpay API keys configured</label><br>
+            <label><input type="checkbox"> Cashfree API keys configured</label><br>
+            <label><input type="checkbox"> Admin email configured</label><br>
+            <label><input type="checkbox"> PHPMailer working (check EMAIL_SETUP_README.md)</label><br>
+        </div>
+
+        <h2>🧪 Step 6: Test Payment</h2>
+        <div class="step">
+            <p><strong>Test Cards (Razorpay):</strong></p>
+            <ul>
+                <li>Card Number: <code>4111 1111 1111 1111</code></li>
+                <li>CVV: Any 3 digits</li>
+                <li>Expiry: Any future date</li>
+            </ul>
+            <p><strong>How to test:</strong></p>
+            <ol>
+                <li>Go to: <a href="book_appointment.php">Book Appointment</a></li>
+                <li>Fill in appointment details</li>
+                <li>Select payment gateway (Razorpay or Cashfree)</li>
+                <li>Click "Proceed to Payment"</li>
+                <li>Use test card details</li>
+                <li>Complete payment</li>
+                <li>Check email for invoice</li>
+            </ol>
+            <p class="success">✓ You should receive confirmation email with invoice</p>
+        </div>
+
+        <h2>⚙️ Configuration Files</h2>
+        <div class="step">
+            <ul>
+                <li><code>patient/payment_config.php</code> - All payment settings</li>
+                <li><code>patient/payment_callback.php</code> - Payment verification handler</li>
+                <li><code>patient/booking_success.php</code> - Success page</li>
+                <li><code>payment_schema.sql</code> - Database updates</li>
+            </ul>
+        </div>
+
+        <h2>💡 Important Notes</h2>
+        <div class="step">
+            <ul>
+                <li class="warning">⚠️ Never commit API keys to Git - add payment_config.php to .gitignore</li>
+                <li class="warning">⚠️ Use SSL/HTTPS before going live</li>
+                <li class="success">✓ Default appointment fee: ₹700.00 (change in payment_config.php)</li>
+                <li class="success">✓ Both gateways work in TEST mode - no real charges</li>
+                <li class="success">✓ Invoices sent automatically to patient and admin</li>
+            </ul>
+        </div>
+
+        <h2>🚀 Going Live</h2>
+        <div class="step">
+            <p><strong>Before production:</strong></p>
+            <ol>
+                <li>Switch to LIVE API keys in payment_config.php</li>
+                <li>Change CASHFREE_ENV to 'PROD'</li>
+                <li>Enable SSL certificate on your domain</li>
+                <li>Update return URLs to production domain</li>
+                <li>Test with small amounts first</li>
+                <li>Configure webhooks in gateway dashboards</li>
+            </ol>
+        </div>
+
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="patient/book_appointment.php" class="btn">Test Booking System</a>
+            <a href="PAYMENT_SETUP.md" class="btn">View Full Documentation</a>
+        </div>
+
+        <hr style="margin: 30px 0;">
+        <p style="text-align: center; color: #666; font-size: 12px;">
+            Payment Integration v1.0 | Last Updated: December 18, 2025
+        </p>
+    </div>
+</body>
+</html>

@@ -4,7 +4,7 @@ include '../config/db.php';
 
 // Check if user is logged in as patient
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'patient') {
-    header("Location: ../profile.php");
+    header("Location: ../login.php");
     exit();
 }
 
@@ -14,10 +14,7 @@ $error_msg = "";
 
 // --- HANDLE FORM SUBMISSION (UPDATE) ---
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    // 1. Get data safely using '??' to prevent "Undefined array key" errors
     $full_name  = $conn->real_escape_string($_POST['full_name'] ?? '');
-    
-    // 2. Handle Age Logic: If empty, set to NULL for SQL, otherwise use the number
     $raw_age    = $_POST['age'] ?? '';
     $age_sql    = ($raw_age === '') ? "NULL" : "'" . $conn->real_escape_string($raw_age) . "'";
 
@@ -29,12 +26,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $weight     = $conn->real_escape_string($_POST['weight'] ?? '');
     $allergies  = $conn->real_escape_string($_POST['allergies'] ?? '');
 
-    // Checkboxes (return 1 if checked, 0 if not)
     $pref_email = isset($_POST['pref_email']) ? 1 : 0;
     $pref_sms   = isset($_POST['pref_sms']) ? 1 : 0;
     $pref_dark  = isset($_POST['pref_dark']) ? 1 : 0;
 
-    // 3. Handle Image Upload
     $image_update_sql = "";
     if (isset($_FILES['profile_photo']) && $_FILES['profile_photo']['error'] == 0) {
         $target_dir = "uploads/";
@@ -49,16 +44,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if (move_uploaded_file($_FILES["profile_photo"]["tmp_name"], $target_file)) {
                 $image_update_sql = ", profile_image = '$target_file'";
             } else {
-                $error_msg = "Failed to move uploaded file. Check folder permissions.";
+                $error_msg = "Failed to move uploaded file.";
             }
         } else {
-            $error_msg = "Invalid file type. Only JPG, PNG, GIF allowed.";
+            $error_msg = "Invalid file type.";
         }
     }
 
-    // 4. Update Database
     if (empty($error_msg)) {
-        // Use $age_sql directly (it already contains quotes or NULL)
         $sql_update = "UPDATE patients SET 
             full_name='$full_name', 
             age=$age_sql, 
@@ -77,7 +70,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         
         if ($conn->query($sql_update) === TRUE) {
             $success_msg = "Profile updated!";
-            $_SESSION['full_name'] = $full_name; // Update session name immediately
+            $_SESSION['full_name'] = $full_name;
+            $_SESSION['pref_dark_mode'] = $pref_dark;
         } else {
             $error_msg = "Database Error: " . $conn->error;
         }
@@ -89,14 +83,15 @@ $sql_patient = "SELECT * FROM patients WHERE patient_id = '$patient_id'";
 $result_patient = $conn->query($sql_patient);
 $patient_data = $result_patient->fetch_assoc();
 
-// Prepare display variables (use defaults if null)
+// Store preference in session for global site theme
+$_SESSION['pref_dark_mode'] = $patient_data['pref_dark_mode'];
+
 $display_name = $patient_data['full_name'] ?? 'Patient';
 $display_age  = $patient_data['age'] ?? ''; 
 $display_email = $patient_data['email'] ?? '';
 $display_phone = $patient_data['phone_number'] ?? '';
 $display_address = $patient_data['address'] ?? '';
 
-// Fallback image + Timestamp for cache busting
 $db_image = !empty($patient_data['profile_image']) ? $patient_data['profile_image'] : 'https://i.pravatar.cc/150?img=33';
 $display_img = $db_image . "?v=" . time();
 
@@ -105,7 +100,6 @@ $ht = $patient_data['height'] ?? '0';
 $wt = $patient_data['weight'] ?? '0';
 $alrg = $patient_data['allergies'] ?? 'None';
 
-// Checkbox states
 $p_email = ($patient_data['pref_email_notif'] == 1) ? 'checked' : '';
 $p_sms   = ($patient_data['pref_sms_notif'] == 1) ? 'checked' : '';
 $p_dark  = ($patient_data['pref_dark_mode'] == 1) ? 'checked' : '';
@@ -117,17 +111,28 @@ $dark_class = ($patient_data['pref_dark_mode'] == 1) ? 'dark-mode' : '';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profile</title>
+    <title>Profile & Settings</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root { --bg-color: #F5F6FA; --sidebar-width: 240px; --primary-blue: #1FB6FF; --text-dark: #2D3436; --text-light: #A0A4A8; --white: #FFFFFF; --shadow: 0 4px 15px rgba(0,0,0,0.03); --radius: 20px; --input-bg: #FAFAFA; --border-color: #eee; }
         body.dark-mode { --bg-color: #1a1a2e; --text-dark: #e0e0e0; --text-light: #b0b0b0; --white: #16213e; --shadow: 0 4px 15px rgba(0,0,0,0.2); --input-bg: #0f3460; --border-color: #0f3460; }
+        
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
-        body { background-color: var(--bg-color); color: var(--text-dark); display: flex; min-height: 100vh; }
-        .main-content { margin-left: var(--sidebar-width); flex: 1; padding: 30px 40px; width: 100%; }
+        body { background-color: var(--bg-color); color: var(--text-dark); display: flex; min-height: 100vh; overflow-x: hidden; }
+        
+        /* SIDEBAR */
+        .sidebar { width: var(--sidebar-width); background: #7B3F00; padding: 30px; display: flex; flex-direction: column; position: fixed; height: 100%; left: 0; top: 0; z-index: 1001; transition: transform 0.3s ease; }
+        .close-sidebar { display: none; position: absolute; top: 20px; right: 20px; color: white; font-size: 24px; cursor: pointer; z-index: 1002; }
+        .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 1000; }
+
+        .main-content { margin-left: var(--sidebar-width); flex: 1; padding: 30px 40px; width: 100%; transition: 0.3s ease; }
         header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        
+        .welcome-container { display: flex; align-items: center; }
         .welcome-text h1 { font-size: 24px; font-weight: 600; }
+        #toggle-btn { font-size: 24px; cursor: pointer; margin-right: 20px; color: var(--text-dark); display: none; }
+
         .user-profile { display: flex; align-items: center; gap: 20px; }
         .profile-info img { width: 45px; height: 45px; border-radius: 12px; object-fit: cover; }
         
@@ -137,7 +142,6 @@ $dark_class = ($patient_data['pref_dark_mode'] == 1) ? 'dark-mode' : '';
         .upload-icon { position: absolute; bottom: 0; right: 0; background: var(--primary-blue); color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 2px solid var(--white); }
         
         .medical-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px; margin-bottom: 30px; }
-        
         .medical-card { background: var(--white); padding: 20px; border-radius: 15px; text-align: center; box-shadow: var(--shadow); }
         .med-input { width: 100%; border: none; background: transparent; font-size: 18px; font-weight: 600; color: var(--text-dark); text-align: center; outline: none; border-bottom: 1px dashed var(--text-light); }
         
@@ -155,7 +159,7 @@ $dark_class = ($patient_data['pref_dark_mode'] == 1) ? 'dark-mode' : '';
         input:checked + .slider { background-color: var(--primary-blue); }
         input:checked + .slider:before { transform: translateX(20px); }
         
-        .save-btn { background: var(--text-dark); color: var(--bg-color); border: none; padding: 12px 25px; border-radius: 10px; cursor: pointer; font-size: 14px; margin-top: 20px; width: 100%; }
+        .save-btn { background: var(--text-light); color: #fff; border: none; padding: 12px 25px; border-radius: 10px; cursor: pointer; font-size: 14px; margin-top: 20px; width: 100%; }
         .setting-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid var(--border-color); }
         
         .alert-box { padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 14px; text-align: center; }
@@ -163,14 +167,28 @@ $dark_class = ($patient_data['pref_dark_mode'] == 1) ? 'dark-mode' : '';
         .error { background: rgba(255, 92, 96, 0.1); color: #FF5C60; }
 
         @media (max-width: 992px) { .medical-grid { grid-template-columns: repeat(3, 1fr); } }
-        @media (max-width: 768px) { .settings-grid, .form-grid, .medical-grid { grid-template-columns: 1fr; } .main-content { margin-left: 0; padding: 20px; } }
+        @media (max-width: 768px) { 
+            .sidebar { transform: translateX(-100%); }
+            .close-sidebar { display: block; }
+            #toggle-btn { display: block; }
+            .main-content { margin-left: 0; padding: 20px; }
+            body.toggled .sidebar { transform: translateX(0); }
+            body.toggled .sidebar-overlay { display: block; }
+            .settings-grid, .form-grid, .medical-grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body class="<?php echo $dark_class; ?>">
-    <?php include 'sidebar.php'; ?>
+    <div class="sidebar-overlay" id="overlay"></div>
+    <div class="sidebar" id="sidebar">
+        <i class="fa-solid fa-xmark close-sidebar" id="close-sidebar-btn"></i>
+        <?php include 'sidebar.php'; ?>
+    </div>
+
     <main class="main-content">
         <header>
             <div class="welcome-container">
+                <i class="fa-solid fa-bars" id="toggle-btn"></i>
                 <div class="welcome-text"><h1>Profile & Settings</h1><p>Manage your account</p></div>
             </div>
             <div class="user-profile">
@@ -236,12 +254,30 @@ $dark_class = ($patient_data['pref_dark_mode'] == 1) ? 'dark-mode' : '';
             reader.addEventListener("load", function () { preview.src = reader.result; }, false);
             if (file) { reader.readAsDataURL(file); }
         }
-        const toggle = document.getElementById('darkModeToggle');
+
+        const toggleBtn = document.getElementById('toggle-btn');
+        const closeSidebarBtn = document.getElementById('close-sidebar-btn');
+        const overlay = document.getElementById('overlay');
         const body = document.body;
-        toggle.addEventListener('change', () => {
-            if(toggle.checked) body.classList.add('dark-mode');
+        const darkModeToggle = document.getElementById('darkModeToggle');
+
+        // Dark Mode Logic with AJAX for instant global update
+        darkModeToggle.addEventListener('change', () => {
+            const isDark = darkModeToggle.checked ? 1 : 0;
+            if(isDark) body.classList.add('dark-mode');
             else body.classList.remove('dark-mode');
+
+            const formData = new FormData();
+            formData.append('pref_dark', isDark);
+            fetch('update_theme.php', { method: 'POST', body: formData })
+            .then(res => res.json())
+            .then(data => { if(!data.success) console.error("Theme sync failed"); });
         });
+
+        // Sidebar Logic
+        toggleBtn.addEventListener('click', () => { body.classList.add('toggled'); });
+        closeSidebarBtn.addEventListener('click', () => { body.classList.remove('toggled'); });
+        overlay.addEventListener('click', () => { body.classList.remove('toggled'); });
     </script>
 </body>
 </html>

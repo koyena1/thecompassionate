@@ -72,17 +72,16 @@ $initials = strtoupper(substr($patient['full_name'], 0, 1));
 
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
         
-        body { background-color: var(--bg-body); color: var(--text-main); display: flex; min-height: 100vh; }
+        body { background-color: var(--bg-body); color: var(--text-main); min-height: 100vh; padding: 20px; }
 
         /* --- LAYOUT --- */
         .dashboard-container {
             display: grid;
-            grid-template-columns: 300px 1fr; /* Sidebar fixed, content flexible */
+            grid-template-columns: 300px 1fr;
             gap: 20px;
             width: 100%;
             max-width: 1400px;
             margin: 0 auto;
-            padding: 20px;
         }
 
         /* --- SIDEBAR (Patient Profile) --- */
@@ -138,16 +137,11 @@ $initials = strtoupper(substr($patient['full_name'], 0, 1));
             border-radius: var(--radius); box-shadow: var(--shadow);
         }
         .section-title { font-size: 1.25rem; font-weight: 700; color: var(--text-main); }
-        .actions button {
-            padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;
-            font-weight: 600; transition: 0.2s; gap: 8px;
-        }
-        .btn-primary { background: var(--primary); color: white; }
+        .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn-primary { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s; background: var(--primary); color: white; }
         .btn-primary:hover { background: #1d4ed8; }
-        .btn-outline { background: transparent; border: 1px solid #cbd5e1; color: var(--secondary); margin-right: 10px; }
-        .btn-outline:hover { background: #f8fafc; text-decoration: none; color: var(--secondary); }
-        
-        a.btn-outline { text-decoration: none; display: inline-block; }
+        .btn-outline { background: transparent; border: 1px solid #cbd5e1; color: var(--secondary); padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: 600; transition: 0.2s; }
+        .btn-outline:hover { background: #f8fafc; color: var(--secondary); }
 
         /* Vitals Grid */
         .vitals-grid {
@@ -167,11 +161,10 @@ $initials = strtoupper(substr($patient['full_name'], 0, 1));
         }
         .vital-info h4 { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 4px; }
         .vital-info p { font-size: 1.5rem; font-weight: 700; }
-        .vital-info span { font-size: 0.8rem; color: var(--text-muted); font-weight: 400; }
 
         /* Detailed Sections */
         .details-grid {
-            display: grid; grid-template-columns: 2fr 1fr; /* 2 columns: History vs Sidebar stuff */
+            display: grid; grid-template-columns: 2fr 1fr;
             gap: 20px;
         }
 
@@ -189,31 +182,27 @@ $initials = strtoupper(substr($patient['full_name'], 0, 1));
         .card-header h3 { font-size: 1.1rem; }
 
         /* Tables & Lists */
-        table { width: 100%; border-collapse: collapse; }
+        .table-responsive { width: 100%; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 500px; }
         th, td { text-align: left; padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; }
         th { color: var(--secondary); font-weight: 600; }
         
-        .tag {
-            padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 600;
-        }
-        .tag-red { background: #fee2e2; color: var(--danger); }
-        .tag-blue { background: #dbeafe; color: var(--primary); }
+        .btn-download { color: var(--primary); font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
 
-        .timeline-item {
-            display: flex; gap: 15px; margin-bottom: 15px;
-        }
-        .timeline-dot {
-            width: 12px; height: 12px; background: var(--primary);
-            border-radius: 50%; margin-top: 6px; flex-shrink: 0;
-        }
+        .timeline-item { display: flex; gap: 15px; margin-bottom: 15px; }
+        .timeline-dot { width: 12px; height: 12px; background: var(--primary); border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
         .timeline-content h5 { font-size: 1rem; margin-bottom: 4px; }
-        .timeline-content p { color: var(--secondary); font-size: 0.9rem; }
         .timeline-date { color: var(--text-muted); font-size: 0.8rem; }
 
-        /* Responsive */
-        @media (max-width: 900px) {
+        /* RESPONSIVE CSS */
+        @media (max-width: 1024px) {
             .dashboard-container { grid-template-columns: 1fr; }
             .details-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 600px) {
+            .top-bar { flex-direction: column; text-align: center; gap: 15px; }
+            .vital-card { flex-direction: column; text-align: center; }
+            .actions { justify-content: center; }
         }
     </style>
 </head>
@@ -235,7 +224,7 @@ $initials = strtoupper(substr($patient['full_name'], 0, 1));
                 <li><span class="label">Age</span> <span class="value"><?php echo $age; ?> yrs</span></li>
                 <li><span class="label">Blood Type</span> <span class="value"><?php echo $blood; ?></span></li>
                 <li><span class="label">Phone</span> <span class="value"><?php echo htmlspecialchars($patient['phone_number']); ?></span></li>
-                <li><span class="label">Email</span> <span class="value" style="font-size:0.8rem;"><?php echo htmlspecialchars($patient['email']); ?></span></li>
+                <li><span class="label">Email</span> <span class="value" style="font-size:0.75rem; word-break: break-all;"><?php echo htmlspecialchars($patient['email']); ?></span></li>
             </ul>
 
             <div style="margin-top: 30px;">
@@ -249,23 +238,22 @@ $initials = strtoupper(substr($patient['full_name'], 0, 1));
         <main class="main-content">
             
             <header class="top-bar">
-    <div class="section-title">Medical Overview</div>
-    <div class="actions">
-        <a href="manage_healthtimeline.php?patient_id=<?php echo $patient_id; ?>" class="btn-outline" style="color: var(--primary); border-color: var(--primary);">
-            <i class="fa-solid fa-pen-to-square"></i> Update Timeline
-        </a>
-        
-        <a href="patient_list.php" class="btn-outline"><i class="fa-solid fa-arrow-left"></i> Back</a>
-        <button class="btn-primary" onclick="window.print()"><i class="fa-solid fa-print"></i> Print</button>
-    </div>
-</header>
+                <div class="section-title">Medical Overview</div>
+                <div class="actions">
+                    <a href="manage_healthtimeline.php?patient_id=<?php echo $patient_id; ?>" class="btn-outline" style="color: var(--primary); border-color: var(--primary);">
+                        <i class="fa-solid fa-pen-to-square"></i> Update Timeline
+                    </a>
+                    <a href="patient list.php" class="btn-outline"><i class="fa-solid fa-arrow-left"></i> Back</a>
+                    <button class="btn-primary" onclick="window.print()"><i class="fa-solid fa-print"></i> Print</button>
+                </div>
+            </header>
 
             <section class="vitals-grid">
                 <div class="vital-card" style="border-color: var(--warning);">
                     <div class="vital-icon" style="color: var(--danger); background: #fef2f2;"><i class="fa-solid fa-droplet"></i></div>
                     <div class="vital-info">
-                        <h4>Blood Type</h4>color: var(--danger);
-                        <p><?php echo $blood; ?></p>
+                        <h4>Blood Type</h4>
+                        <p style="color:var(--danger);"><?php echo $blood; ?></p>
                     </div>
                 </div>
                 <div class="vital-card" style="border-color: var(--success);">
@@ -275,7 +263,7 @@ $initials = strtoupper(substr($patient['full_name'], 0, 1));
                         <p><?php echo $weight; ?></p>
                     </div>
                 </div>
-                <div class="vital-card" style="border-color: var(--danger);">
+                <div class="vital-card" style="border-color: var(--primary);">
                     <div class="vital-icon" style="color: var(--warning); background: #fffbeb;"><i class="fa-solid fa-ruler-vertical"></i></div>
                     <div class="vital-info">
                         <h4>Height</h4>
@@ -287,55 +275,48 @@ $initials = strtoupper(substr($patient['full_name'], 0, 1));
             <div class="details-grid">
                 
                 <div class="clinical-col">
-                    
                     <div class="card">
                         <div class="card-header">
                             <h3><i class="fa-solid fa-pills"></i> Recent Prescriptions</h3>
                         </div>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Type</th>
-                                    <th>Details/File</th>
-                                    <th>Date</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php if ($presc_res->num_rows > 0): ?>
-                                    <?php while($rx = $presc_res->fetch_assoc()): ?>
-                                        <tr>
-                                            <td><?php echo $rx['prescription_type']; ?></td>
-                                            <td>
-                                                <?php 
-                                                // --- FIXED DOWNLOAD LOGIC ---
-                                                if($rx['prescription_type'] == 'Upload' && $rx['file_url']) {
-                                                    $dbPath = $rx['file_url'];
-                                                    
-                                                    // Determine correct path relative to this file
-                                                    // If DB stores "uploads/file.pdf", path is "../uploads/file.pdf"
-                                                    // If DB stores "file.pdf", path is "../uploads/file.pdf"
-                                                    if (strpos($dbPath, 'uploads/') === 0) {
-                                                        $finalPath = "../" . $dbPath;
-                                                    } else {
-                                                        $finalPath = "../uploads/" . $dbPath;
-                                                    }
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Type</th>
+                                        <th>Details/File</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if ($presc_res->num_rows > 0): ?>
+                                        <?php while($rx = $presc_res->fetch_assoc()): ?>
+                                            <tr>
+                                                <td><?php echo $rx['prescription_type']; ?></td>
+                                                <td>
+                                                    <?php 
+                                                    if($rx['prescription_type'] == 'Upload' && $rx['file_url']) {
+                                                        $dbPath = $rx['file_url'];
+                                                        // FIX: Navigate up from admin/ to root, then into patient/
+                                                        $finalPath = (strpos($dbPath, 'uploads/') === 0) ? "../patient/" . $dbPath : "../patient/uploads/" . $dbPath;
 
-                                                    echo "<a href='" . htmlspecialchars($finalPath) . "' download class='btn-download' style='color:var(--primary); font-weight:600; text-decoration:none;'>
-                                                            <i class='fa-solid fa-download'></i> Download File
-                                                          </a>";
-                                                } else {
-                                                    echo htmlspecialchars(substr($rx['digital_content'], 0, 50)) . '...';
-                                                }
-                                                ?>
-                                            </td>
-                                            <td><?php echo date('M d, Y', strtotime($rx['created_at'])); ?></td>
-                                        </tr>
-                                    <?php endwhile; ?>
-                                <?php else: ?>
-                                    <tr><td colspan="3">No prescriptions found.</td></tr>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
+                                                        echo "<a href='" . htmlspecialchars($finalPath) . "' download class='btn-download'>
+                                                                <i class='fa-solid fa-download'></i> Download File
+                                                              </a>";
+                                                    } else {
+                                                        echo htmlspecialchars(substr($rx['digital_content'] ?? '', 0, 50)) . '...';
+                                                    }
+                                                    ?>
+                                                </td>
+                                                <td><?php echo date('M d, Y', strtotime($rx['created_at'])); ?></td>
+                                            </tr>
+                                        <?php endwhile; ?>
+                                    <?php else: ?>
+                                        <tr><td colspan="3">No prescriptions found.</td></tr>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
                     <div class="card">

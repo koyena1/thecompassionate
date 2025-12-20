@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Time Slot System - Demo</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            padding: 40px; 
+            background: #f5f6fa; 
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 30px; 
+            border-radius: 15px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+        }
+        h2 { color: #2c3e50; margin-top: 0; }
+        .feature { 
+            padding: 15px; 
+            margin: 10px 0; 
+            border-left: 4px solid #3498db; 
+            background: #ecf0f1; 
+            border-radius: 5px; 
+        }
+        .success { border-left-color: #27ae60; background: #d5f4e6; }
+        .info { border-left-color: #f39c12; background: #fef5e7; }
+        code { 
+            background: #2c3e50; 
+            color: #ecf0f1; 
+            padding: 2px 6px; 
+            border-radius: 3px; 
+            font-family: 'Courier New', monospace; 
+        }
+        .slot-grid { 
+            display: grid; 
+            grid-template-columns: repeat(4, 1fr); 
+            gap: 10px; 
+            margin: 20px 0; 
+        }
+        .slot { 
+            padding: 10px; 
+            text-align: center; 
+            border-radius: 8px; 
+            font-weight: 500; 
+        }
+        .slot.available { 
+            background: #d5f4e6; 
+            color: #27ae60; 
+            border: 2px solid #27ae60; 
+        }
+        .slot.booked { 
+            background: #fadbd8; 
+            color: #e74c3c; 
+            border: 2px solid #e74c3c; 
+            text-decoration: line-through; 
+        }
+        .test-link {
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-weight: 600;
+        }
+        .test-link:hover { background: #2980b9; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>✅ Time Slot Booking System - Implemented</h2>
+        
+        <div class="feature success">
+            <strong>✓ Smart Time Slot Selection</strong><br>
+            Only available time slots are shown to users. Booked slots are automatically hidden.
+        </div>
+        
+        <div class="feature success">
+            <strong>✓ Real-Time Availability Check</strong><br>
+            When a user selects a date, the system fetches booked appointments and shows only free slots.
+        </div>
+        
+        <div class="feature success">
+            <strong>✓ Prevents Double Booking</strong><br>
+            Once a time slot is confirmed and paid, it won't appear for other users.
+        </div>
+        
+        <div class="feature info">
+            <strong>📋 How It Works:</strong><br>
+            1. User selects a date<br>
+            2. System queries database for booked appointments on that date<br>
+            3. Available slots (9 AM - 5 PM, 30-min intervals) are displayed<br>
+            4. User can only select from available slots
+        </div>
+        
+        <h3>Example Time Slots Display:</h3>
+        <div class="slot-grid">
+            <div class="slot available">09:00 AM</div>
+            <div class="slot available">09:30 AM</div>
+            <div class="slot booked">10:00 AM</div>
+            <div class="slot available">10:30 AM</div>
+            <div class="slot booked">11:00 AM</div>
+            <div class="slot available">11:30 AM</div>
+            <div class="slot available">12:00 PM</div>
+            <div class="slot available">12:30 PM</div>
+        </div>
+        <p style="color: #7f8c8d; font-size: 14px;">
+            <span style="color: #27ae60;">●</span> Green = Available &nbsp;&nbsp;
+            <span style="color: #e74c3c;">●</span> Red/Strikethrough = Booked (Hidden in actual form)
+        </p>
+        
+        <h3>Files Updated:</h3>
+        <div class="feature">
+            <code>patient/book_appointment.php</code> - Updated form with slot selection<br>
+            <code>patient/get_available_slots.php</code> - New API endpoint to fetch booked slots
+        </div>
+        
+        <h3>Database Query:</h3>
+        <div class="feature">
+            Checks appointments table for:<br>
+            <code>appointment_date = selected_date</code> AND<br>
+            <code>(payment_status = 'paid' OR status = 'Confirmed')</code>
+        </div>
+        
+        <a href="book_appointment.php" class="test-link">
+            🔗 Test Book Appointment Page
+        </a>
+        
+        <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #7f8c8d; font-size: 13px;">
+            <strong>Note:</strong> The time slot dropdown will populate automatically when you select a date. 
+            If all slots are booked for a date, you'll see a message: "No slots available for this date."
+        </p>
+    </div>
+</body>
+</html>

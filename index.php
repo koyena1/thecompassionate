@@ -38,9 +38,8 @@ $stmt->close();
         <div class="row no-gutters slider-text align-items-center">
           <div class="col-md-6 ftco-animate d-flex align-items-end">
             <div class="text w-100">
-                <h1 class="mb-4">Counseling For Your Better Life</h1>
-                <p class="mb-4">A small river named Duden flows by their place and supplies it with the necessary regelialia.</p>
-                <p><a href="#" class="btn btn-primary py-3 px-4">Contact us</a> <a href="#" class="btn btn-white py-3 px-4">Read more</a></p>
+                <h1 class="mb-4">Supporting Your Mental Well-Being</h1>
+                <p class="mb-4">Personalized psychological care to help you overcome challenges, build resilience, and live a more balanced life.</p>
             </div>
           </div>
           <a href="https://vimeo.com/45830194" class="img-video popup-vimeo d-flex align-items-center justify-content-center">
@@ -57,8 +56,8 @@ $stmt->close();
                     <div class="intro aside-stretch d-lg-flex w-100">
                         <div class="icon"><span class="flaticon-checklist"></span></div>
                         <div class="text">
-                            <h2>100% Confidential</h2>
-                            <p>A small river named Duden flows by their place and supplies it with the necessary regelialia.</p>
+                            <h2>Your Privacy, Our Priority</h2>
+                            <p>Your privacy is always respected. Everything you share is protected in a safe, judgment-free environment.</p>
                         </div>
                     </div>
                 </div>
@@ -66,8 +65,8 @@ $stmt->close();
                     <div class="intro color-1 d-lg-flex w-100">
                         <div class="icon"><span class="flaticon-employee"></span></div>
                         <div class="text">
-                            <h2>Qualified Team</h2>
-                            <p>A small river named Duden flows by their place and supplies it with the necessary regelialia.</p>
+                            <h2>Trusted Mental Health Professionals</h2>
+                            <p>Experienced and licensed mental health professionals dedicated to your emotional well-being.</p>
                         </div>
                     </div>
                 </div>
@@ -75,8 +74,8 @@ $stmt->close();
                     <div class="intro color-2 d-lg-flex w-100">
                         <div class="icon"><span class="flaticon-umbrella"></span></div>
                         <div class="text">
-                            <h2>Individual Approach</h2>
-                            <p>A small river named Duden flows by their place and supplies it with the necessary regelialia.</p>
+                            <h2>Personalized Care for You</h2>
+                            <p>Personalized therapy tailored to your unique needs, goals, and life experiences.</p>
                         </div>
                     </div>
                 </div>
@@ -99,8 +98,8 @@ $stmt->close();
                             <div class="number d-flex align-items-center justify-content-center"><span>01</span></div>
                             <div class="icon d-flex align-items-center justify-content-center"><span class="flaticon-calendar"></span></div>
                         </div>
-                        <h2>Make Schedule</h2>
-                        <p>A small river named Duden flows by their place and supplies it with the necessary regelialia.</p>
+                        <h2>Choose Your Slots</h2>
+                        <p>Select a date and time that fits your schedule using our simple booking system.</p>
                     </div>
                 </div>
                 <div class="col-md-4 d-flex align-items-stretch ftco-animate">
@@ -109,8 +108,8 @@ $stmt->close();
                             <div class="number d-flex align-items-center justify-content-center"><span>02</span></div>
                             <div class="icon d-flex align-items-center justify-content-center"><span class="flaticon-qa"></span></div>
                         </div>
-                        <h2>Start Discussion</h2>
-                        <p>A small river named Duden flows by their place and supplies it with the necessary regelialia.</p>
+                        <h2>Book Your Appointment</h2>
+                        <p>Confirm your appointment quickly and receive all the details instantly.</p>
                     </div>
                 </div>
                 <div class="col-md-4 d-flex align-items-stretch ftco-animate">
@@ -119,8 +118,8 @@ $stmt->close();
                             <div class="number d-flex align-items-center justify-content-center"><span>03</span></div>
                             <div class="icon d-flex align-items-center justify-content-center"><span class="flaticon-checklist"></span></div>
                         </div>
-                        <h2>Enjoy Plan</h2>
-                        <p>A small river named Duden flows by their place and supplies it with the necessary regelialia.</p>
+                        <h2>Consult With Your Therapist</h2>
+                        <p>Have a one-on-one, confidential consultation in a safe and supportive space.</p>
                     </div>
                 </div>
             </div>
@@ -223,61 +222,6 @@ $stmt->close();
           </div>
         </div>
       </div>
-    </section>
-
-    <section class="ftco-section bg-light">
-        <div class="container">
-            <div class="row justify-content-center pb-5 mb-3">
-              <div class="col-md-7 heading-section text-center ftco-animate">
-                <span class="subheading">Price &amp; Plans</span>
-                <h2>Affordable Packages</h2>
-              </div>
-            </div>
-            <div class="row">
-                <div class="col-md-4 ftco-animate d-flex">
-                  <div class="block-7 w-100">
-                    <div class="text-center">
-                        <span class="price"><sup>$</sup> <span class="number">49</span> <sub>/mo</sub></span>
-                        <span class="excerpt d-block">For Adults</span>
-                        <ul class="pricing-text mb-5">
-                          <li><span class="fa fa-check mr-2"></span>Individual Counseling</li>
-                          <li><span class="fa fa-check mr-2"></span>Couples Therapy</li>
-                          <li><span class="fa fa-check mr-2"></span>Family Therapy</li>
-                        </ul>
-                        <a href="upi://pay?pa=YOUR_UPI_ID_HERE&pn=TheCompassionateSpace&am=49&cu=INR" class="btn btn-primary d-block px-2 py-3">Get Started</a>
-                    </div>
-                  </div>
-                </div>
-                <div class="col-md-4 ftco-animate d-flex">
-                  <div class="block-7 w-100">
-                    <div class="text-center">
-                        <span class="price"><sup>$</sup> <span class="number">79</span> <sub>/mo</sub></span>
-                        <span class="excerpt d-block">For Children</span>
-                        <ul class="pricing-text mb-5">
-                          <li><span class="fa fa-check mr-2"></span>Counseling for Children</li>
-                          <li><span class="fa fa-check mr-2"></span>Behavioral Management</li>
-                          <li><span class="fa fa-check mr-2"></span>Educational Counseling</li>
-                        </ul>
-                        <a href="upi://pay?pa=YOUR_UPI_ID_HERE&pn=TheCompassionateSpace&am=79&cu=INR" class="btn btn-primary d-block px-2 py-3">Get Started</a>
-                    </div>
-                  </div>
-                </div>
-                <div class="col-md-4 ftco-animate d-flex">
-                  <div class="block-7 w-100">
-                    <div class="text-center">
-                        <span class="price"><sup>$</sup> <span class="number">109</span> <sub>/mo</sub></span>
-                        <span class="excerpt d-block">For Business</span>
-                        <ul class="pricing-text mb-5">
-                          <li><span class="fa fa-check mr-2"></span>Consultancy Services</li>
-                          <li><span class="fa fa-check mr-2"></span>Employee Counseling</li>
-                          <li><span class="fa fa-check mr-2"></span>Psychological Assessment</li>
-                        </ul>
-                        <a href="upi://pay?pa=YOUR_UPI_ID_HERE&pn=TheCompassionateSpace&am=109&cu=INR" class="btn btn-primary d-block px-2 py-3">Get Started</a>
-                    </div>
-                  </div>
-                </div>
-            </div>
-        </div>
     </section>
         
     <section class="ftco-appointment ftco-section img" style="background-image: url(images/bg_2.jpg);">

@@ -4,11 +4,19 @@ session_start();
 
 // --- CHECK LOGIN ---
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'patient') {
-    header("Location: ../myapp.php");
+    header("Location: ../login.php"); // Updated to direct back to login if session is invalid
     exit();
 }
 
 $patient_id = $_SESSION['user_id']; 
+
+// --- FETCH DARK MODE PREFERENCE ---
+if(!isset($_SESSION['pref_dark_mode'])) {
+    $pref_res = $conn->query("SELECT pref_dark_mode FROM patients WHERE patient_id = '$patient_id'");
+    $pref_row = $pref_res->fetch_assoc();
+    $_SESSION['pref_dark_mode'] = $pref_row['pref_dark_mode'] ?? 0;
+}
+$dark_class = ($_SESSION['pref_dark_mode'] == 1) ? 'dark-mode' : '';
 
 // --- FETCH PATIENT DETAILS (Photo & Name) ---
 $sql_patient = "SELECT * FROM patients WHERE patient_id = '$patient_id'";
@@ -46,6 +54,17 @@ $display_img = $db_image . "?v=" . time(); // Add timestamp to force refresh
             --white: #FFFFFF;
             --shadow: 0 4px 15px rgba(0,0,0,0.03);
             --radius: 20px;
+            --border-color: #eee;
+        }
+
+        /* --- DARK MODE OVERRIDES --- */
+        body.dark-mode {
+            --bg-color: #1a1a2e;
+            --text-dark: #e0e0e0;
+            --text-light: #b0b0b0;
+            --white: #16213e;
+            --shadow: 0 4px 15px rgba(0,0,0,0.2);
+            --border-color: #252545;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
@@ -55,6 +74,8 @@ $display_img = $db_image . "?v=" . time(); // Add timestamp to force refresh
             color: var(--text-dark);
             display: flex;
             min-height: 100vh;
+            overflow-x: hidden;
+            transition: background 0.3s ease;
         }
 
         /* Sidebar Styling */
@@ -68,14 +89,30 @@ $display_img = $db_image . "?v=" . time(); // Add timestamp to force refresh
             height: 100%;
             left: 0;
             top: 0;
+            z-index: 1001;
+            transition: transform 0.3s ease;
         }
 
-        .menu-item {
-            display: flex; align-items: center; gap: 15px; padding: 15px;
-            color: var(--text-light); text-decoration: none; border-radius: 12px;
-            margin-bottom: 5px; transition: 0.3s; font-size: 14px;
+        /* --- NEW: Close Button (Cross) --- */
+        .close-sidebar {
+            display: none; 
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 1002;
         }
-        .menu-item:hover, .menu-item.active { background-color: var(--text-dark); color: var(--white); }
+
+        /* --- NEW: Overlay --- */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4);
+            z-index: 1000;
+        }
 
         /* Main Content */
         .main-content {
@@ -83,10 +120,15 @@ $display_img = $db_image . "?v=" . time(); // Add timestamp to force refresh
             flex: 1;
             padding: 30px 40px;
             width: 100%;
+            transition: 0.3s ease;
         }
 
         header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .welcome-container { display: flex; align-items: center; }
         .welcome-text h1 { font-size: 24px; font-weight: 600; }
+
+        /* --- NEW: Burger Button Styling --- */
+        #toggle-btn { font-size: 24px; cursor: pointer; margin-right: 20px; color: var(--text-dark); display: none; }
 
         /* User Profile in Header */
         .user-profile { display: flex; align-items: center; gap: 20px; }
@@ -94,7 +136,7 @@ $display_img = $db_image . "?v=" . time(); // Add timestamp to force refresh
         .profile-info img { width: 45px; height: 45px; border-radius: 12px; object-fit: cover; }
 
         /* --- APPOINTMENTS STYLES --- */
-        .appt-tabs { display: flex; gap: 20px; margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .appt-tabs { display: flex; gap: 20px; margin-bottom: 30px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
         .tab-btn { background: none; border: none; font-size: 16px; font-weight: 500; color: var(--text-light); cursor: pointer; padding: 5px 10px; position: relative; }
         .tab-btn.active { color: var(--primary-blue); }
         .tab-btn.active::after { content: ''; position: absolute; bottom: -11px; left: 0; width: 100%; height: 3px; background: var(--primary-blue); border-radius: 3px; }
@@ -121,28 +163,42 @@ $display_img = $db_image . "?v=" . time(); // Add timestamp to force refresh
             background: var(--primary-blue); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; text-decoration: none;
         }
         .btn-outline {
-            background: transparent; border: 1px solid #eee; color: var(--text-light); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px;
+            background: transparent; border: 1px solid var(--border-color); color: var(--text-light); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px;
         }
         .btn-outline:hover { background: #f5f5f5; color: var(--text-dark); }
 
         /* Responsive */
         @media (max-width: 768px) {
-            .sidebar { display: none; }
+            .sidebar { transform: translateX(-100%); }
+            .close-sidebar { display: block; }
+            #toggle-btn { display: block; }
             .main-content { margin-left: 0; padding: 20px; }
+            
+            body.toggled .sidebar { transform: translateX(0); }
+            body.toggled .sidebar-overlay { display: block; }
+
             .appt-card { flex-direction: column; align-items: flex-start; gap: 15px; } 
             .appt-actions { width: 100%; justify-content: space-between; }
         }
     </style>
 </head>
-<body>
+<body class="<?php echo $dark_class; ?>">
 
-    <?php include 'sidebar.php'; ?>
+    <div class="sidebar-overlay" id="overlay"></div>
+
+    <div class="sidebar" id="sidebar">
+        <i class="fa-solid fa-xmark close-sidebar" id="close-sidebar-btn"></i>
+        <?php include 'sidebar.php'; ?>
+    </div>
 
     <main class="main-content">
         <header>
-            <div class="welcome-text">
-                <h1>My Appointments</h1>
-                <p>Manage your upcoming and past visits</p>
+            <div class="welcome-container">
+                <i class="fa-solid fa-bars" id="toggle-btn"></i>
+                <div class="welcome-text">
+                    <h1>My Appointments</h1>
+                    <p>Manage your upcoming and past visits</p>
+                </div>
             </div>
             
             <div class="user-profile">
@@ -163,7 +219,6 @@ $display_img = $db_image . "?v=" . time(); // Add timestamp to force refresh
 
             <div class="appointments-list">
                 <?php
-                    // Fetch ALL appointments for the logged-in patient
                     $sql_all = "SELECT a.*, d.full_name as doctor_name, d.specialization 
                                 FROM appointments a 
                                 LEFT JOIN admin_users d ON a.admin_id = d.admin_id
@@ -177,9 +232,13 @@ $display_img = $db_image . "?v=" . time(); // Add timestamp to force refresh
                                 $status = $row['status'];
                                 $btn_html = "";
                                 
-                                // Logic for button display based on Status
                                 if($status == 'Confirmed'){
-                                    $link = !empty($row['meeting_link']) ? $row['meeting_link'] : '#';
+                                    // Generate meeting link if not exists
+                                    if(!empty($row['meeting_link'])){
+                                        $link = $row['meeting_link'];
+                                    } else {
+                                        $link = '../meeting.php?id='.$row['appointment_id'];
+                                    }
                                     $btn_html = '<a href="'.$link.'" target="_blank" class="btn-join"><i class="fa-solid fa-video"></i> Join Meeting</a>';
                                 } elseif ($status == 'Completed'){
                                     $btn_html = '<button class="btn-outline"><i class="fa-solid fa-download"></i> Prescription</button>';
@@ -189,20 +248,15 @@ $display_img = $db_image . "?v=" . time(); // Add timestamp to force refresh
                                     $btn_html = '<span style="font-size:12px; color:#aaa;">No actions</span>';
                                 }
 
-                                // Doctor Name Handling
                                 $doctorName = !empty($row['doctor_name']) ? htmlspecialchars($row['doctor_name']) : 'Doctor Assigned Soon';
                                 $specialization = !empty($row['specialization']) ? htmlspecialchars($row['specialization']) : 'General';
                                 
-                                // --- UPDATE: Logic to replace Super Admin and Swap Image ---
-                                // Default Doctor Image (Male)
                                 $doctorImg = "https://i.pravatar.cc/150?img=59";
 
                                 if($doctorName === 'Super Admin') {
                                     $doctorName = 'Dr. Usri Sengupta';
-                                    // Change to Female Doctor Image
                                     $doctorImg = "https://i.pravatar.cc/150?img=5"; 
                                 }
-                                // --------------------------------------------------------
 
                                 echo '
                                 <div class="appt-card">
@@ -232,8 +286,28 @@ $display_img = $db_image . "?v=" . time(); // Add timestamp to force refresh
                 ?>
             </div>
         </div>
-
     </main>
 
+    <script>
+        const toggleBtn = document.getElementById('toggle-btn');
+        const closeSidebarBtn = document.getElementById('close-sidebar-btn');
+        const overlay = document.getElementById('overlay');
+        const body = document.body;
+
+        // Open Sidebar
+        toggleBtn.addEventListener('click', () => {
+            body.classList.add('toggled');
+        });
+
+        // Close Sidebar (Cross button)
+        closeSidebarBtn.addEventListener('click', () => {
+            body.classList.remove('toggled');
+        });
+
+        // Close Sidebar (Overlay)
+        overlay.addEventListener('click', () => {
+            body.classList.remove('toggled');
+        });
+    </script>
 </body>
 </html>
