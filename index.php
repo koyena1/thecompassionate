@@ -50,7 +50,7 @@ $stmt->close();
     </div>
 
     <section class="ftco-intro">
-        <div class="container">
+        <div class="container-fluid px-0">
             <div class="row no-gutters">
                 <div class="col-md-4 d-flex">
                     <div class="intro aside-stretch d-lg-flex w-100">

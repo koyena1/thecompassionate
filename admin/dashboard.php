@@ -2,6 +2,14 @@
 session_start();
 
 // =======================================================================
+// SECURITY CHECK - Must be logged in as admin
+// =======================================================================
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
+    header("Location: ../login.php");
+    exit();
+}
+
+// =======================================================================
 // 1. AJAX HANDLER: MARK NOTIFICATION AS READ
 // =======================================================================
 if (isset($_POST['mark_read_id'])) {
@@ -82,11 +90,6 @@ if (isset($_GET['fetch_all_prescriptions'])) {
     header('Content-Type: application/json');
     echo json_encode($prescriptions);
     exit;
-}
-
-// --- SECURITY CHECK ---
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-    // Authentication logic here
 }
 
 // =======================================================================
@@ -460,7 +463,7 @@ if (!$conn_main->connect_error) {
                     </a>
                     <ul class="collapse list-unstyled" id="docSub">
                         <li><a href="doctor_profile.php">Doctor Profiles</a></li>
-                        <li><a href="followup_workflow.php">Follow-up Workflow</a></li>
+                        <li><a href="followup_communication.php">Follow-up Communication</a></li>
                     </ul>
                 </li>
                 <li><a href="#"><i class="fas fa-cubes"></i> Features</a></li>
@@ -472,7 +475,7 @@ if (!$conn_main->connect_error) {
                         <li><a href="manage_healthtimeline.php">Timeline View</a></li>
                     </ul>
                 </li> -->
-                <li><a href="#"><i class="fas fa-ellipsis-h"></i> Payment Gateway</a></li>
+                <li><a href="payment_details.php"><i class="fas fa-money-bill-wave"></i> Payment Details</a></li>
             </ul>
         </nav>
 

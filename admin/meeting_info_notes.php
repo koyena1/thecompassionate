@@ -1,5 +1,6 @@
 <?php
 // FILE: admin/meeting_info_notes.php
+include 'auth_check.php'; // Admin authentication
 include '../config/db.php';
 
 if (!isset($_GET['id'])) {

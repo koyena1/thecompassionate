@@ -1,5 +1,5 @@
 <?php
-session_start();
+include 'auth_check.php'; // Admin authentication
 
 // FIX 1: Ensure this path matches where we created the file earlier
 include '../config/db.php'; 

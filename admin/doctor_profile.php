@@ -1,4 +1,7 @@
 <?php
+// Admin authentication
+include 'auth_check.php';
+
 // Connect to database
 include('../config/db.php'); 
 

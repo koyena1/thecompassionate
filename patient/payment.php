@@ -21,6 +21,24 @@ $display_name = !empty($patient_data['full_name']) ? $patient_data['full_name'] 
 // 2. Prepare Image (Logic to use uploaded photo or fallback)
 $db_image = !empty($patient_data['profile_image']) ? $patient_data['profile_image'] : 'https://i.pravatar.cc/150?img=33';
 $display_img = $db_image . "?v=" . time(); // Add timestamp to force refresh
+
+// --- FETCH PAYMENT HISTORY (Successful payments only) ---
+$sql_payments = "SELECT * FROM appointments 
+                 WHERE patient_id = '$patient_id' AND payment_status IN ('completed', 'paid') 
+                 ORDER BY payment_date DESC";
+$result_payments = $conn->query($sql_payments);
+
+// Calculate total paid amount
+$total_paid = 0;
+$payment_count = 0;
+if ($result_payments && $result_payments->num_rows > 0) {
+    $result_payments->data_seek(0);
+    while ($row = $result_payments->fetch_assoc()) {
+        $total_paid += floatval($row['payment_amount']);
+        $payment_count++;
+    }
+    $result_payments->data_seek(0); // Reset pointer
+}
 ?>
 
 <!DOCTYPE html>
@@ -28,7 +46,7 @@ $display_img = $db_image . "?v=" . time(); // Add timestamp to force refresh
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payments & Billing</title>
+    <title>Payment History</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
@@ -263,8 +281,8 @@ $display_img = $db_image . "?v=" . time(); // Add timestamp to force refresh
     <main class="main-content">
         <header>
             <div class="welcome-text">
-                <h1>Payments & Billing</h1>
-                <p>Manage your invoices and transactions</p>
+                <h1>Payment History</h1>
+                <p>View all your successful payment transactions</p>
             </div>
             
             <div class="user-profile">
@@ -279,149 +297,68 @@ $display_img = $db_image . "?v=" . time(); // Add timestamp to force refresh
         </header>
 
         <section class="stats-grid" style="margin-bottom: 30px;">
-            <div class="card blue">
-                <div class="card-icon"><i class="fa-solid fa-wallet"></i></div>
-                <div class="card-info">
-                    <h2>$120</h2>
-                    <span>Total Due</span>
-                </div>
-            </div>
             <div class="card green" style="background: #00B69B;">
                 <div class="card-icon"><i class="fa-solid fa-check-double"></i></div>
                 <div class="card-info">
-                    <h2>$450</h2>
+                    <h2>₹<?php echo number_format($total_paid, 2); ?></h2>
                     <span>Total Paid</span>
+                </div>
+            </div>
+            <div class="card blue">
+                <div class="card-icon"><i class="fa-solid fa-receipt"></i></div>
+                <div class="card-info">
+                    <h2><?php echo $payment_count; ?></h2>
+                    <span>Successful Payments</span>
                 </div>
             </div>
         </section>
 
-        <h3 style="margin-bottom: 15px; font-size: 18px;">Pending Bills</h3>
-        <div class="bills-list">
-            <div class="payment-row" id="bill-1">
-                <div class="bill-info">
-                    <h4>Dr. Frank Marley - Cardiology</h4>
-                    <p>Appointment ID: #APT-3921 • 12 May 2024</p>
-                </div>
-                <div style="display: flex; align-items: center; gap: 20px;">
-                    <span class="bill-amount">$80.00</span>
-                    <button class="pay-now-btn" onclick="openPaymentModal('$80.00', 'bill-1')">Pay Now</button>
-                </div>
-            </div>
-
-            <div class="payment-row" id="bill-2">
-                <div class="bill-info">
-                    <h4>Lab Test - Blood Work</h4>
-                    <p>Ref ID: #LAB-9921 • 14 May 2024</p>
-                </div>
-                <div style="display: flex; align-items: center; gap: 20px;">
-                    <span class="bill-amount">$40.00</span>
-                    <button class="pay-now-btn" onclick="openPaymentModal('$40.00', 'bill-2')">Pay Now</button>
-                </div>
-            </div>
-        </div>
-
-        <h3 style="margin-bottom: 15px; font-size: 18px; margin-top: 30px;">Transaction History</h3>
+        <h3 style="margin-bottom: 15px; font-size: 18px;">All Successful Payments</h3>
         <div class="history-list">
+            <?php 
+            if ($result_payments && $result_payments->num_rows > 0) {
+                while ($payment = $result_payments->fetch_assoc()) {
+                    $payment_date = date('d M Y', strtotime($payment['payment_date']));
+                    $payment_time = date('h:i A', strtotime($payment['payment_date']));
+                    $appointment_date = date('d M Y', strtotime($payment['appointment_date']));
+                    $payment_gateway = !empty($payment['payment_gateway']) ? ucfirst($payment['payment_gateway']) : 'Online Payment';
+                    $transaction_id = !empty($payment['payment_id']) ? $payment['payment_id'] : (!empty($payment['transaction_id']) ? $payment['transaction_id'] : 'N/A');
+                    // Truncate transaction ID if too long
+                    if (strlen($transaction_id) > 25) {
+                        $transaction_id = substr($transaction_id, 0, 25) . '...';
+                    }
+            ?>
             <div class="payment-row">
                 <div class="bill-info">
-                    <h4>Dr. Savannah Nguyen - Dermatology</h4>
-                    <p>10 April 2024 • via Credit Card</p>
+                    <h4>Appointment Consultation Fee</h4>
+                    <p>Appointment ID: #APT-<?php echo $payment['appointment_id']; ?> • <?php echo $appointment_date; ?></p>
+                    <p style="font-size: 11px; color: #999; margin-top: 3px;">Transaction ID: <?php echo htmlspecialchars($transaction_id); ?></p>
                 </div>
-                <div style="display: flex; align-items: center; gap: 20px;">
-                    <span class="bill-amount">$50.00</span>
-                    <span class="status-paid-text">Paid</span>
-                </div>
-            </div>
-            <div class="payment-row">
-                <div class="bill-info">
-                    <h4>Annual Registration Fee</h4>
-                    <p>05 Jan 2024 • via PayPal</p>
-                </div>
-                <div style="display: flex; align-items: center; gap: 20px;">
-                    <span class="bill-amount">$400.00</span>
-                    <span class="status-paid-text">Paid</span>
+                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+                    <span class="bill-amount">₹<?php echo number_format($payment['payment_amount'], 2); ?></span>
+                    <span class="status-paid-text"><i class="fa-solid fa-check"></i> Paid</span>
+                    <p style="font-size: 11px; color: var(--text-light); margin: 0;"><?php echo $payment_date; ?> • <?php echo $payment_time; ?></p>
+                    <p style="font-size: 11px; color: var(--text-light); margin: 0;">via <?php echo $payment_gateway; ?></p>
                 </div>
             </div>
+            <?php 
+                }
+            } else {
+            ?>
+            <div class="payment-row" style="text-align: center; padding: 40px;">
+                <div style="margin: 0 auto;">
+                    <i class="fa-solid fa-receipt" style="font-size: 48px; color: var(--text-light); margin-bottom: 15px;"></i>
+                    <h4 style="color: var(--text-light);">No payment history found</h4>
+                    <p style="color: var(--text-light); font-size: 13px;">Your successful payments will appear here</p>
+                </div>
+            </div>
+            <?php 
+            }
+            ?>
         </div>
 
     </main>
 
-    <div class="modal-overlay" id="paymentModal">
-        <div class="modal-content">
-            <span class="close-modal" onclick="closeModal()">&times;</span>
-            <h3 style="margin-bottom: 20px;">Secure Payment</h3>
-            
-            <div class="cc-visual">
-                <div style="display:flex; justify-content:space-between; margin-bottom: 20px;">
-                    <i class="fa-solid fa-wifi"></i>
-                    <i class="fa-brands fa-cc-visa" style="font-size: 24px;"></i>
-                </div>
-                <div style="font-size: 18px; letter-spacing: 2px; margin-bottom: 15px;">**** **** **** 4242</div>
-                <div style="display:flex; justify-content:space-between; font-size: 12px;">
-                    <span><?php echo strtoupper(htmlspecialchars($display_name)); ?></span>
-                    <span>12/26</span>
-                </div>
-            </div>
 
-            <form id="payForm">
-                <input type="text" class="cc-input" placeholder="Card Number" required>
-                <div class="cc-row">
-                    <input type="text" class="cc-input" placeholder="MM/YY" required>
-                    <input type="text" class="cc-input" placeholder="CVV" required>
-                </div>
-                <input type="text" class="cc-input" placeholder="Name on Card" required>
-                
-                <button type="submit" class="pay-confirm-btn">Pay <span id="payAmount">$0.00</span></button>
-            </form>
-        </div>
-    </div>
-
-    <script>
-        // --- PAYMENT MODAL LOGIC ---
-        const paymentModal = document.getElementById('paymentModal');
-        const payAmountText = document.getElementById('payAmount');
-        let currentBillId = null;
-
-        function openPaymentModal(amount, billId) {
-            if(payAmountText) payAmountText.innerText = amount;
-            currentBillId = billId;
-            if(paymentModal) paymentModal.style.display = 'flex';
-        }
-
-        function closeModal() {
-            if(paymentModal) paymentModal.style.display = 'none';
-        }
-
-        const payForm = document.getElementById('payForm');
-        if(payForm) {
-            payForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                // Simulate Payment Processing
-                const btn = document.querySelector('.pay-confirm-btn');
-                const originalText = btn.innerHTML;
-                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
-                
-                setTimeout(() => {
-                    btn.innerHTML = '<i class="fa-solid fa-check"></i> Success!';
-                    btn.style.background = '#00B69B';
-                    
-                    setTimeout(() => {
-                        closeModal();
-                        // Remove the paid bill from the list
-                        if(currentBillId) {
-                            const billRow = document.getElementById(currentBillId);
-                            if(billRow) {
-                                billRow.style.opacity = '0';
-                                setTimeout(() => billRow.remove(), 500);
-                            }
-                        }
-                        // Reset button
-                        btn.innerHTML = originalText;
-                        btn.style.background = '#2D3436';
-                    }, 1000);
-                }, 1500);
-            });
-        }
-    </script>
 </body>
 </html>

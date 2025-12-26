@@ -83,9 +83,7 @@ $sql_patient = "SELECT * FROM patients WHERE patient_id = '$patient_id'";
 $result_patient = $conn->query($sql_patient);
 $patient_data = $result_patient->fetch_assoc();
 
-// Store preference in session for global site theme
 $_SESSION['pref_dark_mode'] = $patient_data['pref_dark_mode'];
-
 $display_name = $patient_data['full_name'] ?? 'Patient';
 $display_age  = $patient_data['age'] ?? ''; 
 $display_email = $patient_data['email'] ?? '';
@@ -115,85 +113,157 @@ $dark_class = ($patient_data['pref_dark_mode'] == 1) ? 'dark-mode' : '';
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root { --bg-color: #F5F6FA; --sidebar-width: 240px; --primary-blue: #1FB6FF; --text-dark: #2D3436; --text-light: #A0A4A8; --white: #FFFFFF; --shadow: 0 4px 15px rgba(0,0,0,0.03); --radius: 20px; --input-bg: #FAFAFA; --border-color: #eee; }
-        body.dark-mode { --bg-color: #1a1a2e; --text-dark: #e0e0e0; --text-light: #b0b0b0; --white: #16213e; --shadow: 0 4px 15px rgba(0,0,0,0.2); --input-bg: #0f3460; --border-color: #0f3460; }
+        :root { 
+            --bg-color: #F5F6FA; 
+            --sidebar-width: 260px; 
+            --primary-blue: #1FB6FF; 
+            --text-dark: #2D3436; 
+            --text-light: #A0A4A8; 
+            --white: #FFFFFF; 
+            --shadow: 0 4px 15px rgba(0,0,0,0.03); 
+            --radius: 20px; 
+            --input-bg: #FAFAFA; 
+            --border-color: #eee; 
+        }
+        body.dark-mode { 
+            --bg-color: #0F172A; 
+            --text-dark: #F8FAFC; 
+            --text-light: #94A3B8; 
+            --white: #1E293B; 
+            --shadow: 0 4px 15px rgba(0,0,0,0.2); 
+            --input-bg: #0F172A; 
+            --border-color: #334155; 
+        }
         
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
-        body { background-color: var(--bg-color); color: var(--text-dark); display: flex; min-height: 100vh; overflow-x: hidden; }
+        body { background-color: var(--bg-color); color: var(--text-dark); display: flex; min-height: 100vh; overflow-x: hidden; transition: 0.3s ease; }
         
-        /* SIDEBAR */
-        .sidebar { width: var(--sidebar-width); background: #7B3F00; padding: 30px; display: flex; flex-direction: column; position: fixed; height: 100%; left: 0; top: 0; z-index: 1001; transition: transform 0.3s ease; }
-        .close-sidebar { display: none; position: absolute; top: 20px; right: 20px; color: white; font-size: 24px; cursor: pointer; z-index: 1002; }
-        .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 1000; }
+        /* SIDEBAR STYLING */
+        .sidebar { 
+            width: var(--sidebar-width); 
+            background: #7B3F00; 
+            padding: 30px; 
+            display: flex; 
+            flex-direction: column; 
+            position: fixed; 
+            height: 100%; 
+            left: 0; top: 0; 
+            z-index: 1001; 
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
+        }
 
-        .main-content { margin-left: var(--sidebar-width); flex: 1; padding: 30px 40px; width: 100%; transition: 0.3s ease; }
+        /* Responsive Visibility */
+        body.sidebar-off .sidebar { transform: translateX(-100%); }
+        body.sidebar-off .main-content { margin-left: 0; }
+
+        .sidebar-close-btn {
+            position: absolute;
+            top: 20px; right: 20px;
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            color: white; border: none; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; transition: 0.3s; z-index: 1002;
+        }
+        .sidebar-close-btn:hover { background: rgba(255,255,255,0.3); transform: rotate(90deg); }
+
+        .sidebar-overlay { 
+            display: none; position: fixed; inset: 0; 
+            background: rgba(0,0,0,0.4); z-index: 1000; backdrop-filter: blur(2px); 
+        }
+        body.mobile-sidebar-on .sidebar-overlay { display: block; }
+
+        .main-content { 
+            margin-left: var(--sidebar-width); 
+            flex: 1; padding: 30px 40px; 
+            width: calc(100% - var(--sidebar-width)); 
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
+        }
+
+        /* HEADER */
         header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .welcome-container { display: flex; align-items: center; gap: 15px; }
         
-        .welcome-container { display: flex; align-items: center; }
-        .welcome-text h1 { font-size: 24px; font-weight: 600; }
-        #toggle-btn { font-size: 24px; cursor: pointer; margin-right: 20px; color: var(--text-dark); display: none; }
+        #toggle-btn { 
+            font-size: 22px; cursor: pointer; color: var(--text-dark); 
+            background: var(--white); width: 45px; height: 45px; 
+            border-radius: 12px; display: flex; align-items: center; 
+            justify-content: center; box-shadow: var(--shadow); transition: 0.3s;
+        }
+        #toggle-btn:hover { transform: scale(1.05); }
 
-        .user-profile { display: flex; align-items: center; gap: 20px; }
+        .user-profile { display: flex; align-items: center; gap: 15px; }
+        .profile-info { display: flex; align-items: center; gap: 15px; }
         .profile-info img { width: 45px; height: 45px; border-radius: 12px; object-fit: cover; }
         
-        .profile-header-card { background: var(--white); border-radius: var(--radius); padding: 30px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 30px; margin-bottom: 30px; }
+        /* PROFILE CARDS */
+        .profile-header-card { background: var(--white); border-radius: var(--radius); padding: 30px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 30px; margin-bottom: 30px; border: 1px solid var(--border-color); }
         .profile-img-container { position: relative; width: 100px; height: 100px; }
         .profile-img-lg { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 3px solid var(--primary-blue); }
         .upload-icon { position: absolute; bottom: 0; right: 0; background: var(--primary-blue); color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 2px solid var(--white); }
         
         .medical-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px; margin-bottom: 30px; }
-        .medical-card { background: var(--white); padding: 20px; border-radius: 15px; text-align: center; box-shadow: var(--shadow); }
+        .medical-card { background: var(--white); padding: 20px; border-radius: 15px; text-align: center; box-shadow: var(--shadow); border: 1px solid var(--border-color); }
+        .medical-card h4 { font-size: 13px; color: var(--text-light); margin-bottom: 8px; text-transform: uppercase; }
         .med-input { width: 100%; border: none; background: transparent; font-size: 18px; font-weight: 600; color: var(--text-dark); text-align: center; outline: none; border-bottom: 1px dashed var(--text-light); }
         
         .settings-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 30px; }
-        .settings-panel { background: var(--white); border-radius: var(--radius); padding: 30px; box-shadow: var(--shadow); }
+        .settings-panel { background: var(--white); border-radius: var(--radius); padding: 30px; box-shadow: var(--shadow); border: 1px solid var(--border-color); }
         .form-group { margin-bottom: 20px; }
         .form-group label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; }
         .form-group input { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--input-bg); color: var(--text-dark); outline: none; }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         
-        .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+        .switch { position: relative; display: inline-block; width: 40px; height: 22px; }
         .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 20px; }
-        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
+        .slider { position: absolute; cursor: pointer; inset: 0; background-color: #ccc; transition: .4s; border-radius: 20px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
         input:checked + .slider { background-color: var(--primary-blue); }
-        input:checked + .slider:before { transform: translateX(20px); }
+        input:checked + .slider:before { transform: translateX(18px); }
         
-        .save-btn { background: var(--text-light); color: #fff; border: none; padding: 12px 25px; border-radius: 10px; cursor: pointer; font-size: 14px; margin-top: 20px; width: 100%; }
+        .save-btn { background: var(--primary-blue); color: #fff; border: none; padding: 14px; border-radius: 12px; cursor: pointer; font-size: 15px; font-weight: 600; margin-top: 20px; width: 100%; transition: 0.3s; }
+        .save-btn:hover { opacity: 0.9; transform: translateY(-2px); }
         .setting-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid var(--border-color); }
         
-        .alert-box { padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 14px; text-align: center; }
+        .alert-box { padding: 12px; border-radius: 10px; margin-bottom: 20px; font-size: 14px; text-align: center; }
         .success { background: rgba(0, 182, 155, 0.1); color: #00B69B; }
         .error { background: rgba(255, 92, 96, 0.1); color: #FF5C60; }
 
         @media (max-width: 992px) { .medical-grid { grid-template-columns: repeat(3, 1fr); } }
         @media (max-width: 768px) { 
-            .sidebar { transform: translateX(-100%); }
-            .close-sidebar { display: block; }
-            #toggle-btn { display: block; }
-            .main-content { margin-left: 0; padding: 20px; }
-            body.toggled .sidebar { transform: translateX(0); }
-            body.toggled .sidebar-overlay { display: block; }
+            .sidebar { transform: translateX(-100%); width: 280px; }
+            .main-content { margin-left: 0; width: 100%; padding: 20px; }
+            body.mobile-sidebar-on .sidebar { transform: translateX(0); }
             .settings-grid, .form-grid, .medical-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body class="<?php echo $dark_class; ?>">
     <div class="sidebar-overlay" id="overlay"></div>
+
     <div class="sidebar" id="sidebar">
-        <i class="fa-solid fa-xmark close-sidebar" id="close-sidebar-btn"></i>
+        <button class="sidebar-close-btn" id="sidebar-close-btn">
+            <i class="fa-solid fa-times"></i>
+        </button>
         <?php include 'sidebar.php'; ?>
     </div>
 
     <main class="main-content">
         <header>
             <div class="welcome-container">
-                <i class="fa-solid fa-bars" id="toggle-btn"></i>
-                <div class="welcome-text"><h1>Profile & Settings</h1><p>Manage your account</p></div>
+                <div id="toggle-btn"><i class="fa-solid fa-bars"></i></div>
+                <div class="welcome-text">
+                    <h1 style="font-weight: 700;">Profile Settings</h1>
+                    <p style="color: var(--text-light); font-size: 14px;">Manage your account details</p>
+                </div>
             </div>
             <div class="user-profile">
                 <div class="profile-info">
-                    <div style="text-align: right;"><h4 style="font-size: 14px;"><?php echo htmlspecialchars($display_name); ?></h4><p style="font-size: 11px; color: var(--text-light);">Patient</p></div>
+                    <div style="text-align: right;">
+                        <h4 style="font-size: 14px; color: var(--text-dark);"><?php echo htmlspecialchars($display_name); ?></h4>
+                        <p style="font-size: 11px; color: var(--text-light);">Member ID: #PT-<?php echo $patient_id; ?></p>
+                    </div>
                     <img src="<?php echo htmlspecialchars($display_img); ?>" alt="Profile">
                 </div>
             </div>
@@ -210,12 +280,12 @@ $dark_class = ($patient_data['pref_dark_mode'] == 1) ? 'dark-mode' : '';
                     <input type="file" id="profileUpload" name="profile_photo" style="display: none;" accept="image/*" onchange="previewFile()">
                 </div>
                 <div class="profile-header-info">
-                    <h2><?php echo htmlspecialchars($display_name); ?></h2>
-                    <p>Patient ID: #PT-<?php echo $patient_id; ?></p>
+                    <h2 style="font-weight: 700;"><?php echo htmlspecialchars($display_name); ?></h2>
+                    <p style="color: var(--text-light);">Update your medical and personal info</p>
                 </div>
             </div>
 
-            <h3 style="margin-bottom: 15px; font-size: 18px;">Medical Profile (Editable)</h3>
+            <h3 style="margin-bottom: 15px; font-size: 16px; color: var(--primary-blue); font-weight: 600;">Medical Profile (Editable)</h3>
             <div class="medical-grid">
                 <div class="medical-card"><h4>Age (Yrs)</h4><input type="number" name="age" class="med-input" value="<?php echo htmlspecialchars($display_age); ?>"></div>
                 <div class="medical-card"><h4>Blood Type</h4><input type="text" name="blood_type" class="med-input" value="<?php echo htmlspecialchars($blood); ?>" style="color: #FF5C60;"></div>
@@ -226,7 +296,7 @@ $dark_class = ($patient_data['pref_dark_mode'] == 1) ? 'dark-mode' : '';
 
             <div class="settings-grid">
                 <div class="settings-panel">
-                    <h3 style="margin-bottom: 20px; font-size: 18px;">Personal Information</h3>
+                    <h3 style="margin-bottom: 20px; font-size: 18px; font-weight: 600;">Personal Information</h3>
                     <div class="form-group"><label>Full Name</label><input type="text" name="full_name" value="<?php echo htmlspecialchars($display_name); ?>" required></div>
                     <div class="form-grid">
                         <div class="form-group"><label>Phone</label><input type="text" name="phone" value="<?php echo htmlspecialchars($display_phone); ?>"></div>
@@ -237,7 +307,7 @@ $dark_class = ($patient_data['pref_dark_mode'] == 1) ? 'dark-mode' : '';
                 </div>
 
                 <div class="settings-panel">
-                    <h3 style="margin-bottom: 20px; font-size: 18px;">Settings</h3>
+                    <h3 style="margin-bottom: 20px; font-size: 18px; font-weight: 600;">System Preferences</h3>
                     <div class="setting-item"><div><h4 style="font-size: 14px;">Email Notifications</h4></div><label class="switch"><input type="checkbox" name="pref_email" <?php echo $p_email; ?>><span class="slider"></span></label></div>
                     <div class="setting-item"><div><h4 style="font-size: 14px;">WhatsApp / SMS</h4></div><label class="switch"><input type="checkbox" name="pref_sms" <?php echo $p_sms; ?>><span class="slider"></span></label></div>
                     <div class="setting-item"><div><h4 style="font-size: 14px;">Dark Mode</h4></div><label class="switch"><input type="checkbox" name="pref_dark" id="darkModeToggle" <?php echo $p_dark; ?>><span class="slider"></span></label></div>
@@ -247,6 +317,7 @@ $dark_class = ($patient_data['pref_dark_mode'] == 1) ? 'dark-mode' : '';
     </main>
 
     <script>
+        // File Preview Function
         function previewFile() {
             const preview = document.getElementById('previewImg');
             const file = document.querySelector('input[type=file]').files[0];
@@ -256,12 +327,30 @@ $dark_class = ($patient_data['pref_dark_mode'] == 1) ? 'dark-mode' : '';
         }
 
         const toggleBtn = document.getElementById('toggle-btn');
-        const closeSidebarBtn = document.getElementById('close-sidebar-btn');
+        const closeSidebarBtn = document.getElementById('sidebar-close-btn');
         const overlay = document.getElementById('overlay');
         const body = document.body;
         const darkModeToggle = document.getElementById('darkModeToggle');
 
-        // Dark Mode Logic with AJAX for instant global update
+        // Combined Toggle Sidebar Logic
+        function handleSidebar() {
+            if (window.innerWidth > 768) {
+                body.classList.toggle('sidebar-off');
+            } else {
+                body.classList.toggle('mobile-sidebar-on');
+            }
+        }
+
+        function closeSidebar() {
+            body.classList.remove('mobile-sidebar-on');
+            if (window.innerWidth > 768) body.classList.add('sidebar-off');
+        }
+
+        if(toggleBtn) toggleBtn.addEventListener('click', handleSidebar);
+        if(closeSidebarBtn) closeSidebarBtn.addEventListener('click', closeSidebar);
+        if(overlay) overlay.addEventListener('click', () => body.classList.remove('mobile-sidebar-on'));
+
+        // Dark Mode AJAX Logic (Instant Global Update)
         darkModeToggle.addEventListener('change', () => {
             const isDark = darkModeToggle.checked ? 1 : 0;
             if(isDark) body.classList.add('dark-mode');
@@ -274,10 +363,10 @@ $dark_class = ($patient_data['pref_dark_mode'] == 1) ? 'dark-mode' : '';
             .then(data => { if(!data.success) console.error("Theme sync failed"); });
         });
 
-        // Sidebar Logic
-        toggleBtn.addEventListener('click', () => { body.classList.add('toggled'); });
-        closeSidebarBtn.addEventListener('click', () => { body.classList.remove('toggled'); });
-        overlay.addEventListener('click', () => { body.classList.remove('toggled'); });
+        // Close on Escape Key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeSidebar();
+        });
     </script>
 </body>
 </html>

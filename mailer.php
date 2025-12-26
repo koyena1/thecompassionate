@@ -34,7 +34,7 @@ function sendVerificationEmail($email, $token, $userName = '') {
 
     try {
         // Recipients
-        $mail->setFrom('thecompassionatespace49@gmail.com', 'Medical App');
+        $mail->setFrom('thecompassionatespace49@gmail.com', 'The Compassionate Space');
         $mail->addAddress($email);
 
         // Content
@@ -77,7 +77,7 @@ function sendPasswordResetEmail($email, $token, $userName = '') {
 
     try {
         // Recipients
-        $mail->setFrom('thecompassionatespace49@gmail.com', 'Medical App');
+        $mail->setFrom('thecompassionatespace49@gmail.com', 'The Compassionate Space');
         $mail->addAddress($email);
 
         // Content

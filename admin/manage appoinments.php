@@ -1,5 +1,6 @@
 <?php 
 // FILE: psychiatrist/admin/manage appoinments.php
+include 'auth_check.php'; // Admin authentication
 include '../config/db.php'; 
 ?>
 <!DOCTYPE html>

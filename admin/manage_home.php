@@ -1,5 +1,5 @@
 <?php
-session_start();
+include 'auth_check.php'; // Admin authentication
 
 // --- DATABASE CONNECTION ---
 require_once '../config/db.php'; 

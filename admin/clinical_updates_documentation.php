@@ -1,17 +1,74 @@
 <?php
-session_start();
+include 'auth_check.php'; // Admin authentication
+// session_start();
 include '../config/db.php'; 
+
+$success_message = "";
+$error_message = "";
 
 // Handle Documentation Update (Admin Instructions)
 if (isset($_POST['update_doc'])) {
     $title = mysqli_real_escape_string($conn, $_POST['title']);
     $content = mysqli_real_escape_string($conn, $_POST['content']);
-    mysqli_query($conn, "UPDATE documentation SET title='$title', content='$content' WHERE id=1");
+    $patient_id = isset($_POST['patient_id']) && $_POST['patient_id'] !== '' ? intval($_POST['patient_id']) : 'NULL';
+    
+    // Check if instruction already exists for this patient
+    if ($patient_id === 'NULL') {
+        // Update global instruction
+        $check = mysqli_query($conn, "SELECT id FROM documentation WHERE patient_id IS NULL LIMIT 1");
+    } else {
+        // Check for patient-specific instruction
+        $check = mysqli_query($conn, "SELECT id FROM documentation WHERE patient_id = $patient_id LIMIT 1");
+    }
+    
+    if (mysqli_num_rows($check) > 0) {
+        // Update existing instruction
+        $row = mysqli_fetch_assoc($check);
+        $doc_id = $row['id'];
+        if ($patient_id === 'NULL') {
+            mysqli_query($conn, "UPDATE documentation SET title='$title', content='$content' WHERE id=$doc_id");
+        } else {
+            mysqli_query($conn, "UPDATE documentation SET title='$title', content='$content' WHERE id=$doc_id AND patient_id=$patient_id");
+        }
+        $success_message = "Instruction updated successfully!";
+    } else {
+        // Insert new patient-specific instruction
+        if ($patient_id === 'NULL') {
+            mysqli_query($conn, "INSERT INTO documentation (title, content, patient_id) VALUES ('$title', '$content', NULL)");
+        } else {
+            mysqli_query($conn, "INSERT INTO documentation (title, content, patient_id) VALUES ('$title', '$content', $patient_id)");
+        }
+        $success_message = "New instruction created successfully!";
+    }
 }
 
-// Fetch Admin Content
-$res = mysqli_query($conn, "SELECT * FROM documentation WHERE id=1");
-$doc = mysqli_fetch_assoc($res);
+// Fetch all patients for dropdown
+$patients_query = "SELECT patient_id, full_name FROM patients ORDER BY full_name ASC";
+$patients_res = mysqli_query($conn, $patients_query);
+
+// Fetch Admin Content (global or specific based on selection)
+$selected_patient_id = isset($_GET['patient_id']) ? intval($_GET['patient_id']) : null;
+if ($selected_patient_id) {
+    $res = mysqli_query($conn, "SELECT * FROM documentation WHERE patient_id = $selected_patient_id LIMIT 1");
+    if (mysqli_num_rows($res) == 0) {
+        // If no specific instruction exists, create empty template
+        $doc = ['title' => '', 'content' => '', 'patient_id' => $selected_patient_id];
+    } else {
+        $doc = mysqli_fetch_assoc($res);
+    }
+} else {
+    // Fetch global instruction
+    $res = mysqli_query($conn, "SELECT * FROM documentation WHERE patient_id IS NULL LIMIT 1");
+    $doc = mysqli_fetch_assoc($res) ?: ['title' => '', 'content' => '', 'patient_id' => null];
+}
+
+// Fetch All Patient-Specific Instructions with Patient Names
+$instructions_query = "SELECT d.*, p.full_name 
+                      FROM documentation d 
+                      LEFT JOIN patients p ON d.patient_id = p.patient_id 
+                      WHERE d.patient_id IS NOT NULL
+                      ORDER BY d.updated_at DESC";
+$instructions_res = mysqli_query($conn, $instructions_query);
 
 // Fetch All Patient Uploads with Patient Names
 $uploads_query = "SELECT u.*, p.full_name FROM patient_uploads u 
@@ -125,24 +182,46 @@ $admin_display_name = "Dr.Usri Sengupta";
             </div>
         </div>
 
+        <?php if($success_message): ?>
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="fas fa-check-circle me-2"></i><?php echo $success_message; ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <?php endif; ?>
+
         <div class="row g-4">
             <div class="col-lg-5">
                 <div class="card h-100">
                     <div class="card-header bg-dark text-white fw-bold py-3">
-                        <i class="fas fa-edit me-2"></i>Edit Global Instructions
+                        <i class="fas fa-edit me-2"></i>Edit Instructions
                     </div>
                     <div class="card-body p-4">
-                        <form method="POST">
+                        <form method="POST" id="instructionForm">
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Select Patient (Leave blank for Global)</label>
+                                <select name="patient_id" class="form-select" id="patientSelect">
+                                    <option value="">🌍 Global Instruction (All Patients)</option>
+                                    <?php 
+                                    mysqli_data_seek($patients_res, 0); // Reset pointer
+                                    while($patient = mysqli_fetch_assoc($patients_res)): 
+                                    ?>
+                                        <option value="<?php echo $patient['patient_id']; ?>" 
+                                            <?php echo (isset($doc['patient_id']) && $doc['patient_id'] == $patient['patient_id']) ? 'selected' : ''; ?>>
+                                            👤 <?php echo htmlspecialchars($patient['full_name']); ?>
+                                        </option>
+                                    <?php endwhile; ?>
+                                </select>
+                            </div>
                             <div class="mb-3">
                                 <label class="form-label small fw-bold">Instruction Title</label>
-                                <input type="text" name="title" class="form-control" value="<?php echo htmlspecialchars($doc['title']); ?>" placeholder="e.g., General Guidance">
+                                <input type="text" name="title" class="form-control" value="<?php echo htmlspecialchars($doc['title'] ?? ''); ?>" placeholder="e.g., Blood Test Results" required>
                             </div>
                             <div class="mb-4">
                                 <label class="form-label small fw-bold">Content / Patient Instructions</label>
-                                <textarea name="content" class="form-control" rows="10" placeholder="Enter instructions for patients here..."><?php echo htmlspecialchars($doc['content']); ?></textarea>
+                                <textarea name="content" class="form-control" rows="10" placeholder="Enter instructions for patients here..." required><?php echo htmlspecialchars($doc['content'] ?? ''); ?></textarea>
                             </div>
                             <button type="submit" name="update_doc" class="btn btn-primary w-100 py-2 fw-bold">
-                                <i class="fas fa-save me-2"></i>Update Global View
+                                <i class="fas fa-save me-2"></i>Save Instruction
                             </button>
                         </form>
                     </div>
@@ -150,7 +229,53 @@ $admin_display_name = "Dr.Usri Sengupta";
             </div>
 
             <div class="col-lg-7">
-                <div class="card h-100">
+                <!-- Patient-Specific Instructions -->
+                <div class="card mb-4">
+                    <div class="card-header bg-success text-white fw-bold py-3">
+                        <i class="fas fa-user-md me-2"></i>Patient-Specific Instructions
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-4">Patient Name</th>
+                                        <th>Instruction Title</th>
+                                        <th>Last Updated</th>
+                                        <th class="text-center">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if(mysqli_num_rows($instructions_res) > 0): ?>
+                                        <?php while($instr = mysqli_fetch_assoc($instructions_res)): ?>
+                                        <tr>
+                                            <td class="ps-4 fw-bold"><?php echo htmlspecialchars($instr['full_name']); ?></td>
+                                            <td class="text-primary fw-semibold"><?php echo htmlspecialchars($instr['title']); ?></td>
+                                            <td class="text-muted small"><?php echo date('M d, Y | h:i A', strtotime($instr['updated_at'])); ?></td>
+                                            <td class="text-center pe-4">
+                                                <a href="?patient_id=<?php echo $instr['patient_id']; ?>" 
+                                                   class="btn btn-sm btn-outline-primary px-3"
+                                                   title="Edit this instruction">
+                                                   <i class="fas fa-edit me-1"></i> Edit
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        <?php endwhile; ?>
+                                    <?php else: ?>
+                                        <tr>
+                                            <td colspan="4" class="text-center py-4 text-muted">
+                                                <i class="fas fa-info-circle me-2"></i>No patient-specific instructions created yet.
+                                            </td>
+                                        </tr>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Received Patient Documents -->
+                <div class="card">
                     <div class="card-header bg-primary text-white fw-bold py-3">
                         <i class="fas fa-folder-open me-2"></i>Received Patient Documents
                     </div>
@@ -170,7 +295,17 @@ $admin_display_name = "Dr.Usri Sengupta";
                                         <?php while($row = mysqli_fetch_assoc($uploads_res)): ?>
                                         <tr>
                                             <td class="ps-4 fw-bold"><?php echo htmlspecialchars($row['full_name']); ?></td>
-                                            <td class="small text-truncate" style="max-width: 200px;"><?php echo htmlspecialchars($row['file_name']); ?></td>
+                                            <td class="small text-truncate" style="max-width: 200px;">
+                                                <?php 
+                                                    // Display instruction title if available, otherwise display filename
+                                                    if (!empty($row['instruction_title'])) {
+                                                        echo '<strong>' . htmlspecialchars($row['instruction_title']) . '</strong><br>';
+                                                        echo '<small class="text-muted">(' . htmlspecialchars($row['file_name']) . ')</small>';
+                                                    } else {
+                                                        echo htmlspecialchars($row['file_name']);
+                                                    }
+                                                ?>
+                                            </td>
                                             <td class="text-muted small"><?php echo date('M d, Y | h:i A', strtotime($row['uploaded_at'])); ?></td>
                                             <td class="text-center pe-4">
                                                 <a href="../patient/<?php echo $row['file_path']; ?>" 

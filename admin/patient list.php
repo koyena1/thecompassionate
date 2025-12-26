@@ -1,7 +1,7 @@
 <?php
 // FILE: admin/patient_list.php
+include 'auth_check.php'; // Admin authentication
 include '../config/db.php'; // Adjust path if needed
-session_start();
 
 // Fetch all patients
 $sql = "SELECT * FROM patients ORDER BY created_at DESC";

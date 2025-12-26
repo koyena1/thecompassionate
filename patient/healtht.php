@@ -74,9 +74,10 @@ $timeline_res = $conn->query($timeline_sql);
             display: flex;
             min-height: 100vh;
             transition: all 0.3s ease;
+            overflow-x: hidden;
         }
 
-        /* --- SIDEBAR --- */
+        /* --- SIDEBAR & TOGGLE LOGIC --- */
         .sidebar {
             width: var(--sidebar-width);
             background: var(--primary-brown);
@@ -84,15 +85,40 @@ $timeline_res = $conn->query($timeline_sql);
             height: 100%;
             left: 0; top: 0;
             z-index: 1001;
-            transition: transform 0.3s ease;
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
+
+        /* Desktop Toggle */
+        body.sidebar-off .sidebar { transform: translateX(-100%); }
+        body.sidebar-off .main-content { margin-left: 0; width: 100%; }
+
+        /* Sidebar Close Button */
+        .sidebar-close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            z-index: 1002;
+        }
+        .sidebar-close-btn:hover { background: rgba(255, 255, 255, 0.3); transform: rotate(90deg); }
 
         .main-content {
             margin-left: var(--sidebar-width);
             flex: 1;
             padding: 40px;
             width: calc(100% - var(--sidebar-width));
-            transition: all 0.3s ease;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .sidebar-overlay {
@@ -116,12 +142,27 @@ $timeline_res = $conn->query($timeline_sql);
         .welcome-text h1 { font-size: 26px; font-weight: 700; color: var(--text-dark); }
         .welcome-text p { color: var(--text-light); font-size: 14px; }
         
-        #toggle-btn { font-size: 22px; cursor: pointer; color: var(--text-dark); display: none; }
+        /* HAMBURGER ICON STYLING */
+        #toggle-btn { 
+            font-size: 22px; 
+            cursor: pointer; 
+            color: var(--text-dark); 
+            background: var(--white);
+            width: 45px;
+            height: 45px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow);
+            transition: 0.3s;
+        }
+        #toggle-btn:hover { transform: scale(1.05); }
 
         .user-profile { display: flex; align-items: center; gap: 15px; }
         .profile-info img { width: 48px; height: 48px; border-radius: 14px; object-fit: cover; box-shadow: var(--shadow); border: 2px solid var(--white); }
 
-        /* --- TIMELINE --- */
+        /* --- TIMELINE DESIGN --- */
         .timeline-container {
             max-width: 900px;
             margin: 0 auto;
@@ -244,7 +285,6 @@ $timeline_res = $conn->query($timeline_sql);
         @media (max-width: 768px) {
             .sidebar { transform: translateX(-100%); }
             .main-content { margin-left: 0; padding: 25px; width: 100%; }
-            #toggle-btn { display: block; }
             body.toggled .sidebar { transform: translateX(0); }
             body.toggled .sidebar-overlay { display: block; }
             
@@ -259,13 +299,18 @@ $timeline_res = $conn->query($timeline_sql);
     <div class="sidebar-overlay" id="overlay"></div>
 
     <aside class="sidebar" id="sidebar">
+        <button class="sidebar-close-btn" id="sidebar-close-btn">
+            <i class="fa-solid fa-times"></i>
+        </button>
         <?php include 'sidebar.php'; ?>
     </aside>
 
     <main class="main-content">
         <header>
             <div class="welcome-container">
-                <i class="fa-solid fa-bars-staggered" id="toggle-btn"></i>
+                <div id="toggle-btn">
+                    <i class="fa-solid fa-bars-staggered"></i>
+                </div>
                 <div class="welcome-text">
                     <h1>Health Journey</h1>
                     <p>Your medical evolution through time</p>
@@ -337,17 +382,30 @@ $timeline_res = $conn->query($timeline_sql);
 
     <script>
         const toggleBtn = document.getElementById('toggle-btn');
+        const closeBtn = document.getElementById('sidebar-close-btn');
         const overlay = document.getElementById('overlay');
         const body = document.body;
 
+        // Unified toggle function
+        function handleSidebar() {
+            if (window.innerWidth > 768) {
+                body.classList.toggle('sidebar-off'); 
+            } else {
+                body.classList.toggle('toggled'); 
+            }
+        }
+
+        function closeSidebar() {
+            body.classList.remove('toggled');
+            if (window.innerWidth > 768) body.classList.add('sidebar-off');
+        }
+
         if (toggleBtn) {
-            toggleBtn.addEventListener('click', () => {
-                if (window.innerWidth > 768) {
-                    body.classList.toggle('sidebar-off'); 
-                } else {
-                    body.classList.toggle('toggled'); 
-                }
-            });
+            toggleBtn.addEventListener('click', handleSidebar);
+        }
+
+        if (closeBtn) {
+            closeBtn.addEventListener('click', closeSidebar);
         }
 
         if (overlay) {
@@ -355,6 +413,11 @@ $timeline_res = $conn->query($timeline_sql);
                 body.classList.remove('toggled');
             });
         }
+
+        // Keyboard Support
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeSidebar();
+        });
     </script>
 </body>
 </html>

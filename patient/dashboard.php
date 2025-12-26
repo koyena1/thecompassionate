@@ -31,7 +31,7 @@ $display_name = !empty($patient_data['full_name']) ? $patient_data['full_name'] 
 $db_image = !empty($patient_data['profile_image']) ? $patient_data['profile_image'] : 'https://i.pravatar.cc/150?img=33';
 $display_img = $db_image . "?v=" . time();
 
-// --- AJAX HANDLER: Only runs when a date is clicked ---
+// --- AJAX HANDLER ---
 if (isset($_GET['ajax_fetch_date'])) {
     $target_date = $_GET['ajax_fetch_date'];
     $sql = "SELECT * FROM appointments WHERE patient_id = '$patient_id' AND appointment_date = '$target_date' AND status NOT IN ('Cancelled') ORDER BY appointment_time ASC";
@@ -52,7 +52,6 @@ if (isset($_GET['ajax_fetch_date'])) {
     exit;
 }
 
-// --- REAL DATA FETCHING ---
 $today = date('Y-m-d');
 $visit_sql = "SELECT COUNT(*) as total FROM appointments WHERE patient_id = '$patient_id' AND appointment_date >= '$today' AND status IN ('Confirmed', 'Approved', 'Pending')";
 $real_upcoming_count = ($res = $conn->query($visit_sql)) ? $res->fetch_assoc()['total'] : 0;
@@ -76,7 +75,7 @@ include 'check_notifications.php';
     <style>
         :root {
             --bg-color: #F8F9FD;
-            --sidebar-width: 240px;
+            --sidebar-width: 260px;
             --primary-purple: #7B61FF;
             --primary-red: #FF5C60;
             --primary-orange: #FFB800;
@@ -105,18 +104,21 @@ include 'check_notifications.php';
             min-height: 100vh;
         }
 
-        /* --- SIDEBAR TOGGLE LOGIC --- */
+        /* --- SIDEBAR STYLING --- */
         .sidebar {
             width: var(--sidebar-width);
-            background: #7B3F00;
-            padding: 30px;
+            background: linear-gradient(180deg, #7B3F00 0%, #4a2600 100%);
+            padding: 30px 20px;
             display: flex;
             flex-direction: column;
             position: fixed;
             height: 100%;
             z-index: 1001;
-            left: 0; top: 0;
-            transition: transform 0.3s ease, width 0.3s ease;
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            left: 0;
+            top: 0;
+            overflow-y: auto;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.1);
         }
 
         .main-content {
@@ -127,151 +129,69 @@ include 'check_notifications.php';
             transition: margin-left 0.3s ease, width 0.3s ease;
         }
 
-        /* State when sidebar is OFF (Laptop & Mobile) */
-        body.sidebar-off .sidebar {
-            transform: translateX(-100%);
-        }
+        body.sidebar-off .sidebar { transform: translateX(-100%); }
+        body.sidebar-off .main-content { margin-left: 0; width: 100%; }
 
-        body.sidebar-off .main-content {
-            margin-left: 0;
-            width: 100%;
-        }
-
-        /* Overlay for Mobile only */
         .sidebar-overlay {
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.4);
+            background: rgba(0,0,0,0.5);
             z-index: 1000;
+            backdrop-filter: blur(2px);
         }
+
+        .sidebar-close-btn {
+            position: absolute;
+            top: 20px; right: 20px; width: 32px; height: 32px;
+            border-radius: 50%; background: rgba(255, 255, 255, 0.2);
+            color: white; border: none; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; transition: all 0.3s ease; z-index: 1002;
+        }
+        
+        .sidebar-close-btn:hover { background: rgba(255, 255, 255, 0.3); transform: rotate(90deg); }
 
         /* --- HEADER --- */
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 40px;
-        }
-
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
         .welcome-text h1 { font-size: 26px; font-weight: 700; color: var(--text-dark); }
-        .welcome-text p { color: var(--text-light); font-size: 14px; }
+        .welcome-text p { color: var(--text-dark); font-size: 14px; }
 
-        .search-bar {
-            background: var(--white);
-            padding: 12px 25px;
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            width: 350px;
-            box-shadow: var(--shadow);
-            border: 1px solid rgba(0,0,0,0.02);
-        }
-        .search-bar input { border: none; outline: none; width: 100%; color: var(--text-dark); background: transparent; font-size: 13px; }
-
-        /* --- UI COMPONENTS (CARDS, PANELS, ETC) --- */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 25px;
-            margin-bottom: 40px;
-        }
-
-        .card {
-            padding: 25px; 
-            border-radius: var(--radius); 
-            color: #FFFFFF;
-            display: flex; 
-            align-items: center; 
-            gap: 20px;
-            position: relative;
-            overflow: hidden;
-            transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        .card::after {
-            content: ''; position: absolute; top: -50%; right: -20%; width: 120px; height: 120px;
-            background: rgba(255,255,255,0.1); border-radius: 50%;
-        }
+        /* --- UI COMPONENTS --- */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 25px; margin-bottom: 40px; }
+        .card { padding: 25px; border-radius: var(--radius); color: #FFFFFF; display: flex; align-items: center; gap: 20px; position: relative; overflow: hidden; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .card::after { content: ''; position: absolute; top: -50%; right: -20%; width: 120px; height: 120px; background: rgba(255,255,255,0.1); border-radius: 50%; }
         .card:hover { transform: translateY(-8px); box-shadow: 0 15px 30px rgba(0,0,0,0.1); }
-        
-        .card-icon { 
-            background: rgba(255,255,255,0.25); 
-            width: 55px; height: 55px; 
-            border-radius: 18px; 
-            display: flex; align-items: center; justify-content: center; 
-            font-size: 22px; backdrop-filter: blur(5px);
-        }
-
+        .card-icon { background: rgba(255,255,255,0.25); width: 55px; height: 55px; border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: 22px; backdrop-filter: blur(5px); }
         .card.purple { background: linear-gradient(135deg, #8E78FF, #7B61FF); }
         .card.red { background: linear-gradient(135deg, #FF7E82, #FF5C60); }
         .card.orange { background: linear-gradient(135deg, #FFC933, #FFB800); }
         .card.blue { background: linear-gradient(135deg, #47C5FF, #1FB6FF); }
 
         .dashboard-grid { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 25px; }
-        .panel { 
-            background: var(--white); 
-            border-radius: var(--radius); 
-            padding: 25px; 
-            box-shadow: var(--shadow);
-            border: 1px solid rgba(0,0,0,0.03);
-        }
+        .panel { background: var(--white); border-radius: var(--radius); padding: 25px; box-shadow: var(--shadow); border: 1px solid rgba(0,0,0,0.03); }
         .panel-header h3 { font-size: 17px; font-weight: 600; }
-        
-        .request-item { 
-            display: flex; 
-            align-items: center; 
-            justify-content: space-between; 
-            margin-bottom: 20px; 
-            padding: 12px;
-            border-radius: 16px;
-            transition: 0.3s;
-        }
-        .request-item:hover { background: rgba(0,0,0,0.01); }
-
-        .schedule-icon {
-            width: 40px; height: 40px; border-radius: 12px; background: #F0F4F8;
-            display: flex; align-items: center; justify-content: center; color: #7B3F00;
-        }
-
-        .join-btn { 
-            background: #7B3F00; 
-            color: white; 
-            text-decoration: none; 
-            padding: 8px 16px; 
-            border-radius: 10px; 
-            font-size: 12px; 
-            font-weight: 600; 
-            display: inline-block;
-            transition: 0.3s;
-        }
-        .join-btn:hover { opacity: 0.9; transform: scale(1.05); }
-
-        .status-badge {
-            font-size: 11px; font-weight: 600; color: var(--primary-blue);
-            background: rgba(31, 182, 255, 0.1); padding: 6px 12px; border-radius: 8px;
-        }
-
+        .request-item { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding: 12px; border-radius: 16px; transition: 0.3s; }
+        .schedule-icon { width: 40px; height: 40px; border-radius: 12px; background: #F0F4F8; display: flex; align-items: center; justify-content: center; color: #7B3F00; }
+        .join-btn { background: #7B3F00; color: white; text-decoration: none; padding: 8px 16px; border-radius: 10px; font-size: 12px; font-weight: 600; display: inline-block; transition: 0.3s; }
+        .status-badge { font-size: 11px; font-weight: 600; color: var(--primary-blue); background: rgba(31, 182, 255, 0.1); padding: 6px 12px; border-radius: 8px; }
         .calendar-dates { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-top: 20px; }
-        .date-num { 
-            padding: 10px 5px; border-radius: 12px; cursor: pointer; 
-            text-align: center; font-size: 13px; font-weight: 500;
-        }
+        .date-num { padding: 10px 5px; border-radius: 12px; cursor: pointer; text-align: center; font-size: 13px; font-weight: 500; }
         .date-num.active { background: #7B3F00 !important; color: #fff !important; box-shadow: 0 5px 15px rgba(123,63,0,0.3); }
-
         .empty-state { text-align: center; padding: 40px 0; color: var(--text-light); }
         .empty-state i { font-size: 30px; margin-bottom: 10px; display: block; }
 
-        /* Responsive Mobile Handling */
+        .toggle-btn { font-size: 20px; cursor: pointer; color: var(--text-dark); background: var(--white); width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow); transition: all 0.3s ease; }
+
         @media (max-width: 768px) {
-            .sidebar { transform: translateX(-100%); }
+            .sidebar { transform: translateX(-100%); width: 280px; }
+            .mobile-sidebar-on .sidebar { transform: translateX(0); }
+            .mobile-sidebar-on .sidebar-overlay { display: block; }
             .main-content { margin-left: 0; width: 100%; padding: 20px; }
-            
-            /* On mobile, body sidebar-off actually means OPENING it (reverse logic for better ux) */
-            body.mobile-sidebar-on .sidebar { transform: translateX(0); }
-            body.mobile-sidebar-on .sidebar-overlay { display: block; }
-            .search-bar { display: none; }
+            .dashboard-grid { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
         }
+        @media (max-width: 480px) { .stats-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body class="<?php echo $dark_class; ?>">
@@ -280,23 +200,22 @@ include 'check_notifications.php';
 
     <div class="sidebar" id="sidebar-container">
         <?php include 'sidebar.php'; ?>
+        <button class="sidebar-close-btn" id="sidebar-close-btn">
+            <i class="fa-solid fa-times"></i>
+        </button>
     </div>
 
     <main class="main-content">
         <header>
             <div class="welcome-container" style="display:flex; align-items:center; gap:15px;">
-                <i class="fa-solid fa-bars" id="toggle-btn" style="font-size:20px; cursor:pointer;"></i>
+                <div class="toggle-btn" id="toggle-btn">
+                    <i class="fa-solid fa-bars"></i>
+                </div>
                 <div class="welcome-text">
                     <h1>Hello, <?php echo htmlspecialchars(explode(' ', $display_name)[0]); ?>! 👋</h1>
                     <p>How are you feeling today?</p>
                 </div>
             </div>
-            
-            <div class="search-bar">
-                <i class="fa-solid fa-magnifying-glass" style="color:var(--text-light)"></i>
-                <input type="text" id="searchInput" placeholder="Search appointments or records...">
-            </div>
-
             <div class="user-profile" style="display:flex; align-items:center; gap:20px;">
                 <a href="notification.php" class="icon-btn" style="position:relative; text-decoration:none; color:var(--text-light); background:var(--white); padding:10px; border-radius:12px; box-shadow:var(--shadow);">
                     <i class="fa-regular fa-bell"></i>
@@ -304,7 +223,6 @@ include 'check_notifications.php';
                         <span class="notify-badge" style="position:absolute; top:-2px; right:-2px; background:var(--primary-red); width:10px; height:10px; border-radius:50%; border:2px solid var(--white);"></span>
                     <?php endif; ?>
                 </a>
-
                 <div class="profile-info" style="display:flex; align-items:center; gap:12px;">
                     <img src="<?php echo htmlspecialchars($display_img); ?>" alt="Profile" style="width:45px; height:45px; border-radius:14px; object-fit:cover;">
                 </div>
@@ -370,7 +288,6 @@ include 'check_notifications.php';
                 <div class="panel-header" style="display:flex; justify-content:space-between; margin-bottom:20px;">
                     <h3>Upcoming Schedule</h3><a href="myapp.php" style="color:var(--primary-blue); font-size:12px; text-decoration:none;">See All</a>
                 </div>
-                
                 <div id="today-appointments">
                     <?php
                         $sql_schedule = "SELECT * FROM appointments WHERE patient_id = '$patient_id' AND appointment_date = '$today' AND status NOT IN ('Cancelled') ORDER BY appointment_time ASC LIMIT 3";
@@ -412,25 +329,67 @@ include 'check_notifications.php';
     </main>
 
     <script>
+    // Wait for the entire DOM to load before running scripts
+    document.addEventListener('DOMContentLoaded', function() {
+        const body = document.body;
         const toggleBtn = document.getElementById('toggle-btn');
         const overlay = document.getElementById('overlay');
-        const body = document.body;
 
-        toggleBtn.addEventListener('click', () => {
+        // Logic to close sidebar
+        function closeSidebar(e) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
             if (window.innerWidth > 768) {
-                // Laptop Toggle: On and Off
+                body.classList.add('sidebar-off');
+            } else {
+                body.classList.remove('mobile-sidebar-on');
+            }
+        }
+
+        // Logic to toggle/open sidebar
+        function handleToggle(e) {
+            if (e) e.preventDefault();
+            if (window.innerWidth > 768) {
                 body.classList.toggle('sidebar-off');
             } else {
-                // Mobile Toggle: slide In and Out
-                body.classList.toggle('mobile-sidebar-on');
+                body.classList.add('mobile-sidebar-on');
+            }
+        }
+
+        // 1. ATTACH TO TOGGLE BUTTON (HAMBURGER)
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', handleToggle);
+            toggleBtn.addEventListener('touchstart', handleToggle, { passive: false });
+        }
+
+        // 2. ATTACH TO OVERLAY (CLICKING OUTSIDE)
+        if (overlay) {
+            overlay.addEventListener('click', closeSidebar);
+            overlay.addEventListener('touchstart', closeSidebar, { passive: false });
+        }
+
+        // 3. ATTACH TO CLOSE BUTTON (✕) - DELEGATED ATTACHMENT
+        // This is the most robust way to ensure the button is found and clickable
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('#sidebar-close-btn') || e.target.classList.contains('fa-times')) {
+                closeSidebar(e);
             }
         });
 
-        overlay.addEventListener('click', () => {
-            body.classList.remove('mobile-sidebar-on');
+        document.addEventListener('touchstart', function(e) {
+            if (e.target.closest('#sidebar-close-btn') || e.target.classList.contains('fa-times')) {
+                closeSidebar(e);
+            }
+        }, { passive: false });
+
+        // 4. CLOSE ON ESCAPE KEY
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeSidebar();
         });
 
-        // Chart Initialization
+        // 5. CHART INITIALIZATION (Restored from your original code)
         const ctx = document.getElementById('genderChart').getContext('2d');
         new Chart(ctx, {
             type: 'doughnut',
@@ -440,18 +399,18 @@ include 'check_notifications.php';
             },
             options: { responsive: true, maintainAspectRatio: false, cutout: '80%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } } }
         });
+    });
 
-        // AJAX Function for Calendar
-        function fetchDaySchedule(date, element) {
-            document.querySelectorAll('.date-num').forEach(el => el.classList.remove('active'));
-            element.classList.add('active');
-
-            fetch('dashboard.php?ajax_fetch_date=' + date)
-                .then(response => response.text())
-                .then(html => {
-                    document.getElementById('today-appointments').innerHTML = html;
-                });
-        }
-    </script>
+    // AJAX Function for Calendar (Restored from your original code)
+    function fetchDaySchedule(date, element) {
+        document.querySelectorAll('.date-num').forEach(el => el.classList.remove('active'));
+        element.classList.add('active');
+        fetch('dashboard.php?ajax_fetch_date=' + date)
+            .then(response => response.text())
+            .then(html => {
+                document.getElementById('today-appointments').innerHTML = html;
+            });
+    }
+</script>
 </body>
 </html>

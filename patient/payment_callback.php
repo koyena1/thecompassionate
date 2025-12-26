@@ -7,23 +7,95 @@ include 'payment_config.php';
 if (isset($_GET['appointment_id']) && !isset($_POST['razorpay_payment_id'])) {
     $appointment_id = $_GET['appointment_id'];
     
+    // Log the callback
+    error_log("Cashfree Callback received for appointment: " . $appointment_id);
+    error_log("GET parameters: " . print_r($_GET, true));
+    
     // Get order details to verify payment
     $result = $conn->query("SELECT * FROM appointments WHERE appointment_id = $appointment_id");
     $appointment = $result->fetch_assoc();
     
     if ($appointment) {
-        // Extract order_id from appointment
-        $order_id = "ORDER_" . $appointment_id . "_*"; // Wildcard for any timestamp
+        // For TEST mode, if we receive the callback, consider it successful
+        // In production, you should verify with Cashfree API
+        if (CASHFREE_ENV === 'TEST') {
+            error_log("TEST MODE: Marking payment as successful");
+            
+            $invoice_number = 'INV-' . date('Ymd') . '-' . str_pad($appointment_id, 6, '0', STR_PAD_LEFT);
+            $order_id = $_GET['order_id'] ?? 'TEST_ORDER_' . $appointment_id . '_' . time();
+            
+            $stmt = $conn->prepare("UPDATE appointments SET 
+                payment_status = 'paid', 
+                payment_id = ?, 
+                payment_gateway = 'Cashfree',
+                payment_date = NOW(),
+                transaction_id = ?,
+                invoice_number = ?,
+                status = 'Confirmed'
+                WHERE appointment_id = ?");
+            
+            $stmt->bind_param("sssi", $order_id, $order_id, $invoice_number, $appointment_id);
+            
+            if ($stmt->execute()) {
+                error_log("Database updated successfully for TEST payment");
+                
+                // Get patient details
+                $result = $conn->query("SELECT a.*, p.full_name, p.email 
+                    FROM appointments a 
+                    JOIN patients p ON a.patient_id = p.patient_id 
+                    WHERE a.appointment_id = $appointment_id");
+                $appointment = $result->fetch_assoc();
+                
+                $invoiceData = [
+                    'invoice_number' => $invoice_number,
+                    'patient_name' => $appointment['full_name'],
+                    'patient_email' => $appointment['email'],
+                    'appointment_date' => $appointment['appointment_date'],
+                    'appointment_time' => $appointment['appointment_time'],
+                    'health_issue' => $appointment['initial_health_issue'],
+                    'transaction_id' => $order_id,
+                    'payment_gateway' => 'Cashfree (Test)',
+                    'payment_date' => date('Y-m-d H:i:s'),
+                    'amount' => $appointment['payment_amount']
+                ];
+                
+                // Send emails
+                sendInvoiceEmail($appointment['email'], $invoiceData, false);
+                sendInvoiceEmail(ADMIN_EMAIL, $invoiceData, true);
+                
+                $_SESSION['payment_success'] = true;
+                header("Location: booking_success.php?id=" . $appointment_id);
+                exit();
+            } else {
+                error_log("Database update failed: " . $stmt->error);
+                $_SESSION['payment_error'] = 'Database error. Please contact support.';
+                header("Location: book_appointment.php");
+                exit();
+            }
+        }
         
-        // Verify payment status with Cashfree API
-        $api_url = (CASHFREE_ENV === "PROD") 
-            ? "https://api.cashfree.com/pg/orders" 
-            : "https://sandbox.cashfree.com/pg/orders";
+        // PRODUCTION MODE - Verify with Cashfree API
+        // Check if order_id is passed in URL (Cashfree returns this)
+        $order_id_from_url = $_GET['order_id'] ?? null;
         
-        // Get actual order_id from database if stored, or search recent orders
-        $order_search_url = $api_url . "?customer_id=PATIENT_" . $appointment_id;
+        error_log("Order ID from URL: " . $order_id_from_url);
         
-        $ch = curl_init($order_search_url);
+        // If we have an order_id, verify it directly
+        if ($order_id_from_url) {
+            $api_url = (CASHFREE_ENV === "PROD") 
+                ? "https://api.cashfree.com/pg/orders/" . $order_id_from_url
+                : "https://sandbox.cashfree.com/pg/orders/" . $order_id_from_url;
+        } else {
+            // Fallback: search by customer_id
+            $api_url = (CASHFREE_ENV === "PROD") 
+                ? "https://api.cashfree.com/pg/orders" 
+                : "https://sandbox.cashfree.com/pg/orders";
+            $api_url .= "?customer_id=PATIENT_" . $appointment_id;
+        }
+        
+        error_log("Calling Cashfree API: " . $api_url);
+        
+        $ch = curl_init($api_url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'x-api-version: 2022-09-01',
@@ -35,12 +107,25 @@ if (isset($_GET['appointment_id']) && !isset($_POST['razorpay_payment_id'])) {
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
         
+        error_log("Cashfree API Response Code: " . $http_code);
+        error_log("Cashfree API Response: " . $response);
+        
         if ($http_code == 200) {
-            $orders = json_decode($response, true);
+            $result_data = json_decode($response, true);
             
-            // Find the matching order and check status
-            if (isset($orders[0]) && $orders[0]['order_status'] == 'PAID') {
-                $order_details = $orders[0];
+            // Handle both single order response and array of orders
+            $order_details = null;
+            if (isset($result_data['order_status'])) {
+                // Single order response
+                $order_details = $result_data;
+            } elseif (isset($result_data[0])) {
+                // Array of orders
+                $order_details = $result_data[0];
+            }
+            
+            // Check if payment is successful
+            if ($order_details && $order_details['order_status'] == 'PAID') {
+                error_log("Payment confirmed as PAID");
                 
                 $invoice_number = 'INV-' . date('Ymd') . '-' . str_pad($appointment_id, 6, '0', STR_PAD_LEFT);
                 
@@ -58,7 +143,12 @@ if (isset($_GET['appointment_id']) && !isset($_POST['razorpay_payment_id'])) {
                 $cf_order_id = $order_details['cf_order_id'] ?? $order_id;
                 
                 $stmt->bind_param("sssi", $order_id, $cf_order_id, $invoice_number, $appointment_id);
-                $stmt->execute();
+                
+                if ($stmt->execute()) {
+                    error_log("Database updated successfully");
+                } else {
+                    error_log("Database update failed: " . $stmt->error);
+                }
                 
                 // Get patient details
                 $result = $conn->query("SELECT a.*, p.full_name, p.email 
@@ -88,10 +178,16 @@ if (isset($_GET['appointment_id']) && !isset($_POST['razorpay_payment_id'])) {
                 header("Location: booking_success.php?id=" . $appointment_id);
                 exit();
             } else {
+                error_log("Payment status not PAID: " . ($order_details['order_status'] ?? 'unknown'));
                 $_SESSION['payment_error'] = 'Payment not completed or failed!';
                 header("Location: book_appointment.php");
                 exit();
             }
+        } else {
+            error_log("API call failed with code: " . $http_code);
+            $_SESSION['payment_error'] = 'Unable to verify payment. Please contact support.';
+            header("Location: book_appointment.php");
+            exit();
         }
     }
 }

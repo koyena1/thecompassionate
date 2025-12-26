@@ -1,5 +1,6 @@
 <?php
 // FILE: admin/manage_healthtimeline.php
+include 'auth_check.php'; // Admin authentication
 include '../config/db.php';
 session_start();
 

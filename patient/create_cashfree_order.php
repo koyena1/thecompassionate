@@ -26,10 +26,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Generate order ID
     $order_id = "ORDER_" . $appointment_id . "_" . time();
     
-    // Generate return URL
+    // Generate return URL with proper protocol detection
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || $_SERVER['SERVER_PORT'] == 443 ? 'https' : 'http';
     $script_path = dirname($_SERVER['SCRIPT_NAME']);
-    $base_url = "http://" . $_SERVER['HTTP_HOST'] . $script_path;
+    $base_url = $protocol . "://" . $_SERVER['HTTP_HOST'] . $script_path;
     $return_url = $base_url . "/payment_callback.php?appointment_id=" . $appointment_id;
+    
+    // Log environment info for debugging
+    error_log("Cashfree Environment: " . CASHFREE_ENV . " | Protocol: " . $protocol . " | Return URL: " . $return_url);
     
     // Prepare order data for NEW Cashfree API
     $orderData = [
@@ -77,6 +81,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $result = json_decode($response, true);
         
         if (isset($result['payment_session_id'])) {
+            // Log successful order creation
+            error_log("Cashfree Order Created Successfully: " . $order_id);
+            
             echo json_encode([
                 'success' => true,
                 'order_id' => $order_id,
@@ -85,16 +92,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 'environment' => CASHFREE_ENV
             ]);
         } else {
+            error_log("Cashfree Order Failed: " . print_r($result, true));
             echo json_encode([
                 'success' => false,
-                'message' => 'Failed to create order: ' . ($result['message'] ?? 'Unknown error')
+                'message' => 'Failed to create order: ' . ($result['message'] ?? 'Unknown error'),
+                'response' => $result
             ]);
         }
     } else {
         $error = json_decode($response, true);
+        error_log("Cashfree API Error (HTTP $http_code): " . print_r($error, true));
+        error_log("Request Data: " . json_encode($orderData));
+        
         echo json_encode([
             'success' => false,
             'message' => 'API Error: ' . ($error['message'] ?? 'Failed to create order'),
+            'http_code' => $http_code,
             'details' => $error
         ]);
     }

@@ -51,9 +51,9 @@ $display_img = $db_image . "?v=" . time();
             --primary-blue: #1FB6FF; 
             --primary-green: #00B69B; 
             --primary-red: #FF5C60; 
-            --text-dark: #2D3436; /* Dark text for light mode headers */
-            --text-main: #4A4A4A; /* Contrast text for descriptions */
-            --text-light: #757575; /* Visible grey for sub-text */
+            --text-dark: #2D3436; 
+            --text-main: #4A4A4A; 
+            --text-light: #757575; 
             --white: #FFFFFF; 
             --shadow: 0 10px 30px rgba(0,0,0,0.06); 
             --radius: 24px; 
@@ -71,8 +71,12 @@ $display_img = $db_image . "?v=" . time();
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
-        body { background-color: var(--bg-color); color: var(--text-dark); display: flex; min-height: 100vh; transition: 0.3s ease; }
+        body { background-color: var(--bg-color); color: var(--text-dark); display: flex; min-height: 100vh; transition: 0.3s ease; overflow-x: hidden; }
         
+        /* SIDEBAR TOGGLE CLASSES */
+        body.sidebar-closed .sidebar { transform: translateX(-100%); }
+        body.sidebar-closed .main-content { margin-left: 0; width: 100%; }
+
         /* SIDEBAR */
         .sidebar { 
             width: var(--sidebar-width); 
@@ -81,18 +85,69 @@ $display_img = $db_image . "?v=" . time();
             height: 100%; 
             left: 0; top: 0; 
             z-index: 1001;
-            transition: transform 0.3s ease;
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .main-content { margin-left: var(--sidebar-width); flex: 1; padding: 40px; width: 100%; transition: 0.3s ease; }
+        /* Sidebar Close Button (X) */
+        .sidebar-close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            z-index: 1002;
+        }
+        
+        .sidebar-close-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: rotate(90deg);
+        }
+
+        /* OVERLAY */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            backdrop-filter: blur(2px);
+        }
+        body.sidebar-open .sidebar-overlay { display: block; }
+
+        .main-content { margin-left: var(--sidebar-width); flex: 1; padding: 40px; width: calc(100% - var(--sidebar-width)); transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1), width 0.4s ease; }
         
         header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
         
-        /* FIXED: Ensuring the sub-title below "Notifications" is visible */
         .welcome-text h1 { font-size: 26px; font-weight: 700; color: var(--text-dark); }
-        .welcome-text p { color: var(--text-dark); font-size: 14px; opacity: 1; } /* Resetting opacity */
+        .welcome-text p { color: var(--text-dark); font-size: 14px; opacity: 1; } 
         
-        #toggle-btn { font-size: 22px; cursor: pointer; margin-right: 20px; color: var(--text-dark); display: none; }
+        /* HAMBURGER ICON */
+        .toggle-btn { 
+            font-size: 22px; 
+            cursor: pointer; 
+            color: var(--text-dark); 
+            background: var(--white);
+            width: 45px;
+            height: 45px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow);
+            margin-right: 20px;
+            transition: all 0.3s ease;
+        }
+        .toggle-btn:hover { transform: scale(1.05); }
 
         .notify-container { max-width: 900px; margin: 0 auto; }
         .section-header { margin-bottom: 25px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; }
@@ -125,11 +180,9 @@ $display_img = $db_image . "?v=" . time();
         .notify-icon.red { background: rgba(255, 92, 96, 0.12); color: var(--primary-red); }
         .notify-icon.purple { background: rgba(123, 97, 255, 0.12); color: var(--primary-purple); }
 
-        /* FIXED: Notification Body Text visibility */
         .notify-text h4 { font-size: 16px; font-weight: 600; margin-bottom: 4px; color: var(--text-dark); }
         .notify-text p { font-size: 14px; color: var(--text-main); line-height: 1.5; font-weight: 400; }
         
-        /* FIXED: Time text visibility */
         .time-badge { 
             font-size: 11px; color: var(--text-dark); font-weight: 500; 
             background: rgba(0,0,0,0.04); padding: 5px 12px; border-radius: 50px; 
@@ -151,8 +204,8 @@ $display_img = $db_image . "?v=" . time();
 
         @media (max-width: 768px) { 
             .sidebar { transform: translateX(-100%); } 
-            #toggle-btn { display: block; } 
-            .main-content { margin-left: 0; padding: 25px; } 
+            body.sidebar-open .sidebar { transform: translateX(0); }
+            .main-content { margin-left: 0; padding: 25px; width: 100%; } 
             .notify-item { flex-direction: column; align-items: flex-start; } 
             .notify-action { margin-left: 0; width: 100%; margin-top: 15px; } 
         }
@@ -163,17 +216,22 @@ $display_img = $db_image . "?v=" . time();
     <div class="sidebar-overlay" id="overlay"></div>
 
     <aside class="sidebar" id="sidebar">
-        <i class="fa-solid fa-xmark" id="close-btn" style="position:absolute; top:25px; right:25px; color:white; font-size:24px; cursor:pointer; display:none;"></i>
+        <button class="sidebar-close-btn" id="close-btn">
+            <i class="fa-solid fa-times"></i>
+        </button>
         <?php include 'sidebar.php'; ?>
     </aside>
 
-    <main class="main-content">
+    <main class="main-content" id="main-content">
         <header>
-            <div class="welcome-container">
-                <i class="fa-solid fa-bars-staggered" id="toggle-btn"></i>
+            <div class="welcome-container" style="display:flex; align-items:center;">
+                <div class="toggle-btn" id="toggle-btn">
+                    <i class="fa-solid fa-bars-staggered"></i>
+                </div>
                 <div class="welcome-text">
                     <h1>Notifications</h1>
-                    <p>Track updates for your medical journey</p> </div>
+                    <p>Track updates for your medical journey</p> 
+                </div>
             </div>
             
             <div class="user-profile">
@@ -215,7 +273,8 @@ $display_img = $db_image . "?v=" . time();
                         </div>
                         <div class="notify-text">
                             <h4><?php echo htmlspecialchars($row['title']); ?></h4>
-                            <p><?php echo htmlspecialchars($row['message']); ?></p> <span class="time-badge"><i class="fa-regular fa-clock" style="margin-right:5px;"></i><?php echo $timeTxt; ?></span>
+                            <p><?php echo htmlspecialchars($row['message']); ?></p> 
+                            <span class="time-badge"><i class="fa-regular fa-clock" style="margin-right:5px;"></i><?php echo $timeTxt; ?></span>
                         </div>
                     </div>
                     
@@ -233,7 +292,7 @@ $display_img = $db_image . "?v=" . time();
                 <?php 
                     } 
                 } else {
-                    echo "<div class='empty-state'><p>No notifications found.</p></div>";
+                    echo "<div class='empty-state' style='text-align:center; padding:40px; color:var(--text-light);'><p>No notifications found.</p></div>";
                 }
                 ?>
             </div>
@@ -246,13 +305,47 @@ $display_img = $db_image . "?v=" . time();
         const overlay = document.getElementById('overlay');
         const body = document.body;
 
-        if (toggleBtn) {
-            toggleBtn.addEventListener('click', () => body.classList.add('toggled'));
+        // Toggle Sidebar
+        toggleBtn.addEventListener('click', function() {
+            if (window.innerWidth > 768) {
+                // Laptop/Desktop toggle logic
+                body.classList.toggle('sidebar-closed');
+            } else {
+                // Mobile overlay logic
+                body.classList.add('sidebar-open');
+            }
+        });
+
+        // Close Sidebar (Mobile and Desktop)
+        function closeSidebar() {
+            if (window.innerWidth > 768) {
+                body.classList.add('sidebar-closed');
+            } else {
+                body.classList.remove('sidebar-open');
+            }
         }
+
         if (closeBtn) {
-            closeBtn.addEventListener('click', () => body.classList.remove('toggled'));
+            closeBtn.addEventListener('click', closeSidebar);
         }
-        overlay.addEventListener('click', () => body.classList.remove('toggled'));
+        
+        overlay.addEventListener('click', function() {
+            body.classList.remove('sidebar-open');
+        });
+
+        // Close mobile sidebar on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                body.classList.remove('sidebar-open');
+            }
+        });
+
+        // Auto-fix layout on resize
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 768) {
+                body.classList.remove('sidebar-open');
+            }
+        });
     </script>
 </body>
 </html>

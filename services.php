@@ -28,6 +28,7 @@ include 'config/db.php';
         transition: all 0.3s ease;
         border: 1px solid #f0f0f0;
         height: 100%;
+        min-height: 450px;
         position: relative;
         display: flex;
         flex-direction: column;
@@ -44,6 +45,7 @@ include 'config/db.php';
         background-size: cover;
         background-position: center;
         position: relative;
+        flex-shrink: 0;
       }
 
       /* Floating Icon Circle */
@@ -87,6 +89,7 @@ include 'config/db.php';
         font-size: 15px;
         line-height: 1.6;
         margin-bottom: 20px;
+        flex-grow: 1;
       }
 
       .service-card .read-more {
@@ -101,6 +104,17 @@ include 'config/db.php';
       
       .service-card .read-more:hover {
         color: #F96D00;
+      }
+
+      /* Ensure equal height columns */
+      .row.service-row {
+        display: flex;
+        flex-wrap: wrap;
+      }
+
+      .row.service-row > [class*='col-'] {
+        display: flex;
+        margin-bottom: 30px;
       }
 
       /* --- Modal Styles (Added for Popup) --- */
@@ -221,7 +235,7 @@ include 'config/db.php';
                 </div>
             </div>
             
-            <div class="row">
+            <div class="row service-row">
                 <?php
                 // Fetch services from the database
                 $sql = "SELECT * FROM services ORDER BY id ASC";
@@ -240,7 +254,7 @@ include 'config/db.php';
                         $modalDesc = htmlspecialchars($row['description'], ENT_QUOTES);
                         $modalImg = htmlspecialchars($imagePath, ENT_QUOTES);
                 ?>
-                <div class="col-md-4 d-flex ftco-animate px-2">
+                <div class="col-md-4 d-flex ftco-animate">
                     <div class="service-card">
                         <div class="img" style="background-image: url('<?php echo $imagePath; ?>');">
                             <div class="icon-holder">
